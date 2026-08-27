@@ -8,6 +8,8 @@ import {
   SharedFamilyDebtAbono,
   SharedFamilySavings,
   SharedFamilySavingsDeposit,
+  AdminFamilyGroup,
+  FamilyGroupMember,
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -474,3 +476,176 @@ export const saveSharedSaving = saveSharedFamilySaving;
 export const deleteSharedSaving = deleteSharedFamilySaving;
 export const addDepositToSharedSaving = addSharedFamilySavingsDeposit;
 export const deleteDepositFromSharedSaving = deleteSharedFamilySavingsDeposit;
+
+// ----------------------------------------------------
+// ADMIN / SUPPORT ACTIONS
+// ----------------------------------------------------
+
+export async function getAdminUsers(search?: string): Promise<any[]> {
+  try {
+    const q = search ? `?search=${encodeURIComponent(search)}` : '';
+    const res = await fetch(`${API_URL}/admin/users${q}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function adminResetPin(userId: string, tempPin: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/admin/users/${userId}/reset-pin`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ tempPin }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error || 'Error al restablecer el PIN.' };
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Error de conexión con el servidor.' };
+  }
+}
+
+export async function deleteAdminUser(userId: string, adminPin: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      body: JSON.stringify({ adminPin }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error || 'Error al eliminar el usuario.' };
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Error de conexión con el servidor.' };
+  }
+}
+
+export async function downloadUserBackup(userId: string, userName: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/admin/users/${userId}/backup`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al descargar backup.');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${userName}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Error downloading user backup:', err);
+    alert('No se pudo descargar la copia de seguridad del usuario.');
+  }
+}
+
+export async function downloadFullSqlDump(): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/admin/backup/dump`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al descargar dump.');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ahorro_quincenal_dump_${new Date().toISOString().split('T')[0]}.sql`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Error downloading DB dump:', err);
+    alert('No se pudo descargar el dump de la base de datos.');
+  }
+}
+
+export async function resetPinForce(
+  email: string,
+  tempPin: string,
+  newPin: string
+): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/auth/reset-pin-force`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, tempPin, newPin }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error || 'Error al restablecer el PIN.' };
+    
+    localStorage.setItem('auth_token', data.token);
+    setCurrentUser(data.user);
+    return { success: true, user: data.user, token: data.token };
+  } catch {
+    return { success: false, error: 'Error al conectar con el servidor.' };
+  }
+}
+
+export async function getAdminFamilyGroups(): Promise<AdminFamilyGroup[]> {
+  try {
+    const res = await fetch(`${API_URL}/admin/groups`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function getFamilyGroupMembers(groupId: string): Promise<FamilyGroupMember[]> {
+  try {
+    const res = await fetch(`${API_URL}/admin/groups/${groupId}/members`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function addMemberToFamilyGroup(
+  groupId: string,
+  email: string
+): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/admin/groups/${groupId}/members`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error || 'Error al agregar miembro.' };
+    return { success: true, user: data.user };
+  } catch {
+    return { success: false, error: 'Error de conexión con el servidor.' };
+  }
+}
+
+export async function removeMemberFromFamilyGroup(
+  groupId: string,
+  userId: string,
+  adminPin: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/admin/groups/${groupId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      body: JSON.stringify({ adminPin }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error || 'Error al remover miembro.' };
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Error de conexión con el servidor.' };
+  }
+}
+

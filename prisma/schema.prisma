@@ -15,6 +15,7 @@ model User {
   activeFamilyGroupId String?
   familyGroup         FamilyGroup?               @relation("UserActiveFamilyGroup", fields: [activeFamilyGroupId], references: [id], onDelete: SetNull)
   createdAt           DateTime                   @default(now())
+  requiresPinReset    Boolean                    @default(false)
   
   // Relations for personal finances
   config              AppConfig?

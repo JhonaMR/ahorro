@@ -5,6 +5,7 @@ export const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_quincenal_
 
 export interface AuthRequest extends Request {
   userId?: string;
+  userRole?: string;
 }
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
@@ -16,12 +17,23 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     return;
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
     if (err) {
       res.status(403).json({ error: 'Token no válido o expirado.' });
       return;
     }
-    req.userId = user.userId;
+    req.userId = decoded.userId;
+    req.userRole = decoded.role;
+    next();
+  });
+}
+
+export function authenticateAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  authenticateToken(req, res, () => {
+    if (req.userRole !== 'admin' && req.userId !== 'soporteahorro') {
+      res.status(403).json({ error: 'Acceso denegado: se requieren privilegios de administrador.' });
+      return;
+    }
     next();
   });
 }

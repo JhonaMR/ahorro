@@ -1,8 +1,8 @@
 # Etapa 1: Construcción del Frontend, dependencias y backend
 FROM node:20-alpine AS builder
 
-# Instalar OpenSSL para Prisma
-RUN apk add --no-cache openssl
+# Instalar OpenSSL y postgresql-client para Prisma y Backups
+RUN apk add --no-cache openssl postgresql-client
 
 WORKDIR /app
 
@@ -32,8 +32,8 @@ RUN npm prune --production
 # Etapa 2: Imagen final de ejecución (súper ligera)
 FROM node:20-alpine AS runner
 
-# Instalar OpenSSL para Prisma en el entorno de ejecución
-RUN apk add --no-cache openssl
+# Instalar OpenSSL y postgresql-client para Prisma y Backups en el entorno de ejecución
+RUN apk add --no-cache openssl postgresql-client
 
 WORKDIR /app
 

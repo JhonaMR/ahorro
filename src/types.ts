@@ -178,6 +178,27 @@ export interface UserAccount {
   activeFamilyGroupId?: string | null;
   familyGroupId?: string | null; // legacy compatibility
   createdAt: string;
+  role?: string;
+  requiresPinReset?: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  requiresPinReset: boolean;
+}
+
+export interface AdminFamilyGroup {
+  id: string;
+  name: string;
+  code: string;
+  createdAt: string;
+  createdByUserId: string;
+  creatorName: string;
+  creatorEmail: string;
+  memberCount: number;
 }
 
 export interface FamilyGroupMember {

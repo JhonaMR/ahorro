@@ -17,7 +17,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { UserAccount } from '../types';
-import { loginUser, registerUser } from '../utils/storage';
+import { loginUser, registerUser, resetPinForce } from '../utils/storage';
 import { DottedBackground } from './DottedBackground';
 
 interface AuthScreenProps {
@@ -31,7 +31,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   theme,
   onToggleTheme,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset_pin_required'>('login');
 
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -41,6 +41,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPin, setRegisterPin] = useState('');
   const [registerConfirmPin, setRegisterConfirmPin] = useState('');
+
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetTempPin, setResetTempPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmNewPin, setConfirmNewPin] = useState('');
 
   const [showPin, setShowPin] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -70,9 +75,46 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     const res = await loginUser(loginEmail, loginPin);
     if (res.success && res.user) {
-      onLoginSuccess(res.user);
+      if (res.user.requiresPinReset) {
+        setResetEmail(loginEmail);
+        setResetTempPin(loginPin);
+        setMode('reset_pin_required');
+        setErrorMsg(null);
+      } else {
+        onLoginSuccess(res.user);
+      }
     } else {
       setErrorMsg(res.error || 'Error al iniciar sesión.');
+    }
+  };
+
+  const handleResetPinRequired = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+
+    if (newPin.length !== 6) {
+      setErrorMsg('El nuevo PIN debe tener exactamente 6 dígitos numéricos.');
+      return;
+    }
+
+    if (newPin !== confirmNewPin) {
+      setErrorMsg('Las nuevas contraseñas de 6 dígitos no coinciden.');
+      return;
+    }
+
+    if (newPin === resetTempPin) {
+      setErrorMsg('El nuevo PIN debe ser diferente al PIN temporal actual.');
+      return;
+    }
+
+    const res = await resetPinForce(resetEmail, resetTempPin, newPin);
+    if (res.success && res.user) {
+      setSuccessMsg('¡PIN actualizado exitosamente! Iniciando sesión...');
+      setTimeout(() => {
+        if (res.user) onLoginSuccess(res.user);
+      }, 700);
+    } else {
+      setErrorMsg(res.error || 'Error al restablecer el PIN.');
     }
   };
 
@@ -143,42 +185,44 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           theme === 'dark' ? 'bg-slate-900/90 border border-slate-800' : 'bg-white border border-slate-200/90'
         }`}>
           {/* Tab Switcher */}
-          <div className={`grid grid-cols-2 p-1 rounded-2xl border transition-all duration-300 ${
-            theme === 'dark' ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-100 border-slate-200'
-          }`}>
-            <button
-              type="button"
-              id="tab-btn-login"
-              onClick={() => {
-                setMode('login');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                mode === 'login'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              type="button"
-              id="tab-btn-register"
-              onClick={() => {
-                setMode('register');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                mode === 'register'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Crear Cuenta
-            </button>
-          </div>
+          {mode !== 'reset_pin_required' && (
+            <div className={`grid grid-cols-2 p-1 rounded-2xl border transition-all duration-300 ${
+              theme === 'dark' ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-100 border-slate-200'
+            }`}>
+              <button
+                type="button"
+                id="tab-btn-login"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMsg(null);
+                  setSuccessMsg(null);
+                }}
+                className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                  mode === 'login'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                type="button"
+                id="tab-btn-register"
+                onClick={() => {
+                  setMode('register');
+                  setErrorMsg(null);
+                  setSuccessMsg(null);
+                }}
+                className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                  mode === 'register'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Crear Cuenta
+              </button>
+            </div>
+          )}
 
           {/* Feedback Alerts */}
           {errorMsg && (
@@ -207,7 +251,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type="email"
+                    type="text"
                     id="input-login-email"
                     placeholder="ejemplo@correo.com"
                     value={loginEmail}
@@ -392,6 +436,105 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               >
                 <span>Registrarme e Ingresar</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {/* RESET PIN REQUIRED FORM */}
+          {mode === 'reset_pin_required' && (
+            <form onSubmit={handleResetPinRequired} className="space-y-4">
+              <div className="p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Tu contraseña de acceso fue restablecida por soporte. Por seguridad, ingresa un nuevo PIN de 6 dígitos numéricos.</span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                  }`}>
+                    Nuevo PIN (6 dígitos)
+                  </label>
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                    {newPin.length}/6 dígitos
+                  </span>
+                </div>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    id="input-reset-new-pin"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="Nuevo PIN (6 dígitos)"
+                    value={newPin}
+                    onChange={(e) => handlePinInput(e.target.value, setNewPin)}
+                    className={`w-full pl-10 pr-10 py-3 rounded-xl text-base tracking-widest font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition duration-300 ${
+                      theme === 'dark'
+                        ? 'bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500'
+                        : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                  }`}>
+                    Confirmar Nuevo PIN
+                  </label>
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                    {confirmNewPin.length}/6 dígitos
+                  </span>
+                </div>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    id="input-reset-confirm-pin"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="Confirmar PIN (6 dígitos)"
+                    value={confirmNewPin}
+                    onChange={(e) => handlePinInput(e.target.value, setConfirmNewPin)}
+                    className={`w-full pl-10 pr-10 py-3 rounded-xl text-base tracking-widest font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition duration-300 ${
+                      theme === 'dark'
+                        ? 'bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500'
+                        : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                id="btn-submit-reset-pin"
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <span>Guardar Nuevo PIN e Ingresar</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMsg(null);
+                  setSuccessMsg(null);
+                  setNewPin('');
+                  setConfirmNewPin('');
+                }}
+                className={`w-full text-center text-xs font-semibold hover:underline mt-2 cursor-pointer transition ${
+                  theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Cancelar y Volver
               </button>
             </form>
           )}

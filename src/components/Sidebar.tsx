@@ -20,8 +20,8 @@ import { PeriodFinancialSummary, calculateGlobalMetrics } from '../utils/calcula
 import { formatCurrency, getPeriodLabel } from '../utils/formatters';
 
 interface SidebarProps {
-  activeTab: 'dashboard' | 'balance' | 'pending_expenses' | 'debts' | 'savings' | 'shared_finances' | 'transactions' | 'scheduled' | 'calendar' | 'config';
-  onTabChange: (tab: 'dashboard' | 'balance' | 'pending_expenses' | 'debts' | 'savings' | 'shared_finances' | 'transactions' | 'scheduled' | 'calendar' | 'config') => void;
+  activeTab: 'dashboard' | 'balance' | 'pending_expenses' | 'debts' | 'savings' | 'shared_finances' | 'transactions' | 'scheduled' | 'calendar' | 'config' | 'support';
+  onTabChange: (tab: 'dashboard' | 'balance' | 'pending_expenses' | 'debts' | 'savings' | 'shared_finances' | 'transactions' | 'scheduled' | 'calendar' | 'config' | 'support') => void;
   onOpenConfig?: () => void;
   data: AppData;
   period: PeriodSelection;
@@ -69,8 +69,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     (t) => t.isScheduled && !t.isCompleted
   ).length;
   const totalSharedItems = sharedDebtsCount + sharedSavingsCount;
-
-  const navItems = [
+  const navItems = currentUser?.role === 'admin' ? [
+    {
+      id: 'support' as const,
+      label: 'Módulo de Soporte',
+      shortLabel: 'Soporte',
+      icon: Users,
+      badge: 'Admin',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    }
+  ] : [
     {
       id: 'dashboard' as const,
       label: 'Dashboard',
@@ -306,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Period Mini Summary Card (positioned at the bottom, directly above the user footer) */}
-        {!isCollapsed && (
+        {!isCollapsed && currentUser?.role !== 'admin' && (
           <div className="mt-auto pt-6 px-0.5 pb-1">
             <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3 text-xs space-y-2">
               <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 border-b border-slate-700/50 pb-1.5">
@@ -367,17 +375,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="text-[10px] text-slate-400 truncate font-mono mt-0.5">{currentUser.email}</div>
             </div>
             
-            <button
-              onClick={() => {
-                onTabChange('config');
-                setShowProfileMenu(false);
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className="w-full text-left py-2 px-2.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition flex items-center gap-2 cursor-pointer border-0 bg-transparent outline-none"
-            >
-              <Settings className="w-3.5 h-3.5 text-slate-400" />
-              <span>Configuración y Perfil</span>
-            </button>
+            {currentUser.role !== 'admin' && (
+              <button
+                onClick={() => {
+                  onTabChange('config');
+                  setShowProfileMenu(false);
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className="w-full text-left py-2 px-2.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition flex items-center gap-2 cursor-pointer border-0 bg-transparent outline-none"
+              >
+                <Settings className="w-3.5 h-3.5 text-slate-400" />
+                <span>Configuración y Perfil</span>
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -415,50 +425,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        <button
-          id="btn-sidebar-settings"
-          onClick={() => {
-            onTabChange('config');
-            if (onOpenConfig) onOpenConfig();
-            if (onCloseMobile) onCloseMobile();
-          }}
-          title={isCollapsed ? 'Módulo de Configuración' : undefined}
-          className={`w-full flex items-center ${
-            isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
-          } text-xs font-semibold rounded-xl border transition-colors cursor-pointer group relative ${
-            activeTab === 'config'
-              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border-slate-800'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <Settings
-              className={`w-4 h-4 transition-transform ${
-                activeTab === 'config'
-                  ? 'text-emerald-400 rotate-45'
-                  : 'text-slate-400 group-hover:text-white group-hover:rotate-45'
-              }`}
-            />
-            {!isCollapsed && <span>Módulo de Configuración</span>}
-          </div>
-          {!isCollapsed && (
-            <span
-              className={`text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${
-                activeTab === 'config'
-                  ? 'bg-emerald-500/30 text-emerald-200'
-                  : 'text-slate-400 bg-slate-800'
-              }`}
-            >
-              {currencyCode}
-            </span>
-          )}
+        {currentUser?.role !== 'admin' && (
+          <button
+            id="btn-sidebar-settings"
+            onClick={() => {
+              onTabChange('config');
+              if (onOpenConfig) onOpenConfig();
+              if (onCloseMobile) onCloseMobile();
+            }}
+            title={isCollapsed ? 'Módulo de Configuración' : undefined}
+            className={`w-full flex items-center ${
+              isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
+            } text-xs font-semibold rounded-xl border transition-colors cursor-pointer group relative ${
+              activeTab === 'config'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Settings
+                className={`w-4 h-4 transition-transform ${
+                  activeTab === 'config'
+                    ? 'text-emerald-400 rotate-45'
+                    : 'text-slate-400 group-hover:text-white group-hover:rotate-45'
+                }`}
+              />
+              {!isCollapsed && <span>Módulo de Configuración</span>}
+            </div>
+            {!isCollapsed && (
+              <span
+                className={`text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${
+                  activeTab === 'config'
+                    ? 'bg-emerald-500/30 text-emerald-200'
+                    : 'text-slate-400 bg-slate-800'
+                }`}
+              >
+                {currencyCode}
+              </span>
+            )}
 
-          {isCollapsed && (
-            <span className="absolute left-full ml-2.5 px-2 py-1 bg-slate-950 text-slate-100 text-xs font-medium rounded-lg shadow-xl border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              Módulo de Configuración ({currencyCode})
-            </span>
-          )}
-        </button>
+            {isCollapsed && (
+              <span className="absolute left-full ml-2.5 px-2 py-1 bg-slate-950 text-slate-100 text-xs font-medium rounded-lg shadow-xl border border-slate-700 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                Módulo de Configuración ({currencyCode})
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </aside>
   );

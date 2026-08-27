@@ -7,12 +7,16 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes';
 import personalRoutes from './routes/personal.routes';
 import familyRoutes from './routes/family.routes';
+import adminRoutes from './routes/admin.routes';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3040;
+
+// Habilitar confianza en proxies inversos para obtener la IP real del cliente
+app.set('trust proxy', true);
 
 // Middlewares de Seguridad y CORS
 app.use(helmet({
@@ -37,6 +41,7 @@ app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api', personalRoutes);
 app.use('/api/family', familyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Servir frontend en producción
 if (process.env.NODE_ENV === 'production') {

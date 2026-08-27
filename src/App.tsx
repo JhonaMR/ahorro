@@ -22,10 +22,18 @@ import { DepositModal } from './components/DepositModal';
 import { ConfigManager } from './components/ConfigManager';
 import { AuthScreen } from './components/AuthScreen';
 import { DottedBackground } from './components/DottedBackground';
+import { SupportManager } from './components/SupportManager';
 
 export default function App() {
   const state = useFinancialState();
   const [calendarViewMode, setCalendarViewMode] = React.useState<'grid' | 'list' | 'year'>('grid');
+
+  // Force redirect admin users to support tab
+  React.useEffect(() => {
+    if (state.currentUser?.role === 'admin' && state.activeTab !== 'support') {
+      state.setActiveTab('support');
+    }
+  }, [state.currentUser, state.activeTab]);
 
   // Beautiful Loading Spinner
   if (state.isLoading) {
@@ -292,6 +300,10 @@ export default function App() {
               viewMode={calendarViewMode}
               setViewMode={setCalendarViewMode}
             />
+          )}
+
+          {state.activeTab === 'support' && (
+            <SupportManager />
           )}
 
           {state.activeTab === 'config' && (
