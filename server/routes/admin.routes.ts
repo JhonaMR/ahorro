@@ -32,9 +32,9 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
     });
 
     res.json(users);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching admin users:', err);
-    res.status(500).json({ error: 'Error del servidor al obtener la lista de usuarios.' });
+    res.status(500).json({ error: 'Error del servidor al obtener la lista de usuarios.', details: err.message });
   }
 });
 
@@ -67,9 +67,9 @@ router.post('/users/:id/reset-pin', async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, tempPin: pinToSet });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error resetting user PIN:', err);
-    res.status(500).json({ error: 'Error al restablecer el PIN del usuario.' });
+    res.status(500).json({ error: 'Error al restablecer el PIN del usuario.', details: err.message });
   }
 });
 
@@ -99,9 +99,9 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
     await prisma.user.delete({ where: { id } });
 
     res.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error deleting user:', err);
-    res.status(500).json({ error: 'Error del servidor al eliminar el usuario.' });
+    res.status(500).json({ error: 'Error del servidor al eliminar el usuario.', details: err.message });
   }
 });
 
@@ -159,9 +159,9 @@ router.get('/users/:id/backup', async (req: AuthRequest, res: Response) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="backup_${cleanUserData.email}_${Date.now()}.json"`);
     res.json(cleanUserData);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error exporting user backup:', err);
-    res.status(500).json({ error: 'Error al exportar los datos del usuario.' });
+    res.status(500).json({ error: 'Error al exportar los datos del usuario.', details: err.message });
   }
 });
 
@@ -656,9 +656,9 @@ router.get('/groups', async (req: AuthRequest, res: Response) => {
     }));
 
     res.json(formattedGroups);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching admin groups:', err);
-    res.status(500).json({ error: 'Error del servidor al obtener los grupos familiares.' });
+    res.status(500).json({ error: 'Error del servidor al obtener los grupos familiares.', details: err.message });
   }
 });
 
@@ -690,9 +690,9 @@ router.get('/groups/:id/members', async (req: AuthRequest, res: Response) => {
     }));
 
     res.json(formattedMembers);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching group members:', err);
-    res.status(500).json({ error: 'Error al obtener los miembros del grupo.' });
+    res.status(500).json({ error: 'Error al obtener los miembros del grupo.', details: err.message });
   }
 });
 
@@ -744,9 +744,9 @@ router.post('/groups/:id/members', async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, user: { id: user.id, name: user.name, email: user.email } });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error adding member to group:', err);
-    res.status(500).json({ error: 'Error del servidor al agregar el miembro al grupo.' });
+    res.status(500).json({ error: 'Error del servidor al agregar el miembro al grupo.', details: err.message });
   }
 });
 
@@ -781,9 +781,9 @@ router.delete('/groups/:id/members/:userId', async (req: AuthRequest, res: Respo
     });
 
     res.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error removing group member:', err);
-    res.status(500).json({ error: 'Error del servidor al remover el miembro del grupo.' });
+    res.status(500).json({ error: 'Error del servidor al remover el miembro del grupo.', details: err.message });
   }
 });
 

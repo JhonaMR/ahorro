@@ -28,7 +28,7 @@ app.use(express.json());
 // Limitador de peticiones para evitar fuerza bruta en el Login
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 3, // Máximo 3 intentos por IP en ese lapso
+  max: 10, // Ajustado a 10 (un término medio seguro entre usabilidad y protección de fuerza bruta)
   message: { error: 'Demasiados intentos de inicio de sesión. Por favor intenta de nuevo en 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,

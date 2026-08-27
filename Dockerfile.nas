@@ -15,5 +15,5 @@ RUN npm install --omit=dev && npx prisma generate
 # Exponer el puerto del servidor
 EXPOSE 3040
 
-# Iniciar la app (espera la BD, ejecuta migraciones y levanta node)
-CMD ["sh", "-c", "node server/wait-for-db.js && npx prisma db push && node dist-server/index.js"]
+# Iniciar la app (espera la BD, genera cliente, ejecuta migraciones y levanta node)
+CMD ["sh", "-c", "node server/wait-for-db.js && npx prisma generate && npx prisma db push && node dist-server/index.js"]

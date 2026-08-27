@@ -164,7 +164,11 @@ export async function loadAppData(): Promise<AppData> {
     });
     if (!res.ok) return INITIAL_SEED_DATA;
     const data = await res.json();
-    return data;
+    return {
+      ...INITIAL_SEED_DATA,
+      ...data,
+      config: data && data.config ? { ...DEFAULT_CONFIG, ...data.config } : DEFAULT_CONFIG,
+    };
   } catch {
     return INITIAL_SEED_DATA;
   }

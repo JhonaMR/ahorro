@@ -3,8 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: ahorro_quincenal_db
     restart: always
-    # ports:
-    #   - "5438:5432"
+    ports:
+      - "5438:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Contrasena14.
@@ -33,6 +33,7 @@ services:
     volumes:
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/dist:/app/dist
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/dist-server:/app/dist-server
+      - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/prisma:/app/prisma
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/server/wait-for-db.js:/app/server/wait-for-db.js
     depends_on:
       db:

@@ -9,10 +9,31 @@ const router = Router();
 // ----------------------------------------------------
 router.get('/data', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const config = await prisma.appConfig.findUnique({
+    let config = await prisma.appConfig.findUnique({
       where: { userId: req.userId },
       include: { additionalFixedExpenses: true }
     });
+
+    if (!config) {
+      config = {
+        id: 'default-config',
+        userId: req.userId || '',
+        monthlyFixedIncome: 0,
+        incomeDistribution: 'both_equal',
+        customIncomeQ1: 0,
+        customIncomeQ2: 0,
+        incomeQ1Day: 15,
+        incomeQ2Day: 30,
+        monthlyTransportExpense: 0,
+        transportDistribution: 'both_equal',
+        customTransportQ1: 0,
+        customTransportQ2: 0,
+        suggestedExpenseTags: ['Ocio', 'Restaurantes', 'Tecnología', 'Bebidas', 'Hogar', 'Otro'],
+        currencyCode: 'COP',
+        currencySymbol: '$',
+        additionalFixedExpenses: []
+      } as any;
+    }
 
     const debts = await prisma.debtItem.findMany({
       where: { userId: req.userId },
@@ -81,6 +102,12 @@ router.get('/data', authenticateToken, async (req: AuthRequest, res: Response) =
 router.post('/data/sync', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { config, debts, savings, sporadicTransactions, pendingExpenses, balanceAllocations, skippedObligations } = req.body;
   const userId = req.userId!;
+
+  // Bypass database sync for support/admin virtual user
+  if (userId === 'soporteahorro') {
+    res.json({ success: true, message: 'Sync bypassed for support user.' });
+    return;
+  }
 
   try {
     await prisma.$transaction(async (tx) => {

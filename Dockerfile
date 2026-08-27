@@ -51,6 +51,7 @@ ENV PORT=3040
 EXPOSE 3040
 
 # 1. Esperar a que la base de datos esté lista
-# 2. Sincronizar el esquema de la DB con Prisma
-# 3. Arrancar Express usando Node nativo (sin tsx para ahorrar CPU y RAM en la NAS)
-CMD ["sh", "-c", "node server/wait-for-db.js && npx prisma db push && node dist-server/index.js"]
+# 2. Regenerar el cliente Prisma dinámicamente con el esquema actual
+# 3. Sincronizar el esquema de la DB con Prisma
+# 4. Arrancar Express usando Node nativo (sin tsx para ahorrar CPU y RAM en la NAS)
+CMD ["sh", "-c", "node server/wait-for-db.js && npx prisma generate && npx prisma db push && node dist-server/index.js"]
