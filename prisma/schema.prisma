@@ -1,0 +1,347 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String                     @id @default(uuid())
+  name                String
+  email               String                     @unique
+  pin                 String                     // 6-digit numeric string
+  activeFamilyGroupId String?
+  familyGroup         FamilyGroup?               @relation("UserActiveFamilyGroup", fields: [activeFamilyGroupId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                   @default(now())
+  
+  // Relations for personal finances
+  config              AppConfig?
+  debts               DebtItem[]
+  savings             SavingsProgram[]
+  transactions        SporadicTransaction[]
+  balanceAllocations  BalanceAllocation[]
+  skippedObligations  SkippedObligation[]
+  pendingExpenses     PendingExpense[]
+  
+  // Relations for group memberships
+  memberships         FamilyGroupMember[]
+  createdGroups       FamilyGroup[]              @relation("GroupCreator")
+  
+  // Shared finance links
+  payerSharedDebts    SharedFamilyDebt[]         @relation("SharedDebtPayer")
+  createdSharedDebts  SharedFamilyDebt[]         @relation("SharedDebtCreator")
+  createdSharedSavings SharedFamilySavings[]      @relation("SharedSavingCreator")
+  sharedDebtAbonos    SharedFamilyDebtAbono[]
+  sharedSavingDeposits SharedFamilySavingsDeposit[]
+  sharedDebtShares    SharedParticipantShare[]
+}
+
+model FamilyGroup {
+  id                  String                     @id @default(uuid())
+  name                String
+  code                String                     @unique // 7-digit code
+  createdByUserId     String
+  creator             User                       @relation("GroupCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt           DateTime                   @default(now())
+  
+  // Members and active users referencing this group
+  members             FamilyGroupMember[]
+  activeUsers         User[]                     @relation("UserActiveFamilyGroup")
+  
+  // Shared items
+  sharedDebts         SharedFamilyDebt[]
+  sharedSavings       SharedFamilySavings[]
+}
+
+model FamilyGroupMember {
+  id            String      @id @default(uuid())
+  familyGroupId String
+  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime    @default(now())
+  isCreator     Boolean     @default(false)
+
+  @@unique([familyGroupId, userId])
+}
+
+model AppConfig {
+  id                       String                   @id @default(uuid())
+  userId                   String                   @unique
+  user                     User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthlyFixedIncome       Float                    @default(3500000)
+  incomeDistribution       String                   @default("both_equal")
+  customIncomeQ1           Float                    @default(1750000)
+  customIncomeQ2           Float                    @default(1750000)
+  incomeQ1Day              Int?                     @default(15)
+  incomeQ2Day              Int?                     @default(30)
+  monthlyTransportExpense  Float                    @default(220000)
+  transportDistribution    String                   @default("both_equal")
+  customTransportQ1        Float                    @default(110000)
+  customTransportQ2        Float                    @default(110000)
+  suggestedExpenseTags     String[]                 @default(["Ocio", "Restaurantes", "Tecnología", "Bebidas", "Hogar", "Otro"])
+  currencyCode             String                   @default("COP")
+  currencySymbol           String                   @default("$")
+  additionalFixedExpenses  AdditionalFixedExpense[]
+}
+
+model AdditionalFixedExpense {
+  id             String    @id @default(uuid())
+  configId       String
+  config         AppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  name           String
+  monthlyAmount  Float
+  tag            String
+  distribution   String    @default("both_equal")
+  customQ1Amount Float?
+  customQ2Amount Float?
+  q1Day          Int?      @default(15)
+  q2Day          Int?      @default(30)
+}
+
+model DebtItem {
+  id                  String              @id @default(uuid())
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title               String
+  tag                 String
+  totalOriginalAmount Float
+  installmentsCount   Int
+  installmentAmount   Float
+  frequency           String              @default("mensual") // quincenal | mensual
+  monthlyDistribution String              @default("both_equal") // both_equal | both_custom | only_q1 | only_q2
+  customQ1Amount      Float?
+  customQ2Amount      Float?
+  startYear           Int
+  startMonth          Int
+  startQuincena       Int                 @default(1) // 1 | 2
+  notes               String?
+  isArchived          Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+  payments            DebtPaymentRecord[]
+}
+
+model DebtPaymentRecord {
+  id                String   @id @default(uuid())
+  debtId            String
+  debt              DebtItem @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  periodKey         String   // e.g. "2026-08-Q1" or "2026-08"
+  installmentNumber Int
+  amountPaid        Float
+  paidAt            DateTime @default(now())
+  notes             String?
+  isExtraPayment    Boolean  @default(false)
+}
+
+model SavingsProgram {
+  id                  String                 @id @default(uuid())
+  userId              String
+  user                User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  tag                 String
+  targetAmount        Float?
+  periodicAmount      Float
+  frequency           String                 @default("mensual") // quincenal | mensual
+  monthlyDistribution String                 @default("both_equal")
+  customQ1Amount      Float?
+  customQ2Amount      Float?
+  startYear           Int
+  startMonth          Int
+  startQuincena       Int                    @default(1) // 1 | 2
+  notes               String?
+  isArchived          Boolean                @default(false)
+  createdAt           DateTime               @default(now())
+  deposits            SavingsDepositRecord[]
+}
+
+model SavingsDepositRecord {
+  id          String         @id @default(uuid())
+  savingsId   String
+  savings     SavingsProgram @relation(fields: [savingsId], references: [id], onDelete: Cascade)
+  periodKey   String         // e.g. "2026-08-Q1"
+  amount      Float
+  depositedAt DateTime       @default(now())
+  notes       String?
+}
+
+model SporadicTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  type        String   // income | expense
+  amount      Float
+  tag         String
+  periodKey   String   // e.g. "2026-08-Q1"
+  date        String   // YYYY-MM-DD
+  isScheduled Boolean  @default(false)
+  notes       String?
+  isCompleted Boolean  @default(false)
+}
+
+model BalanceAllocation {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodKey           String
+  spendableAmount     Float
+  keepInAccountAmount Float
+  notes               String?
+
+  @@unique([userId, periodKey])
+}
+
+model SkippedObligation {
+  id           String @id @default(uuid())
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodKey    String
+  obligationId String // Reference to debtId, savingsId, or special tags like 'transport' or additionalFixedExpenseId
+
+  @@unique([userId, periodKey, obligationId])
+}
+
+model PendingExpense {
+  id                    String             @id @default(uuid())
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                 String
+  amount                Float
+  date                  String             // YYYY-MM-DD
+  scope                 String             @default("personal") // personal | shared
+  status                String             @default("pending") // pending | regularized
+  notes                 String?
+  tag                   String?
+  createdAt             DateTime           @default(now())
+  
+  // Regularization fields
+  destination           String?            // sporadic_expense | debt
+  splitMethod           String?            // equal | manual
+  settlementType        String?            // instant | debt_installments
+  installmentsCount     Int?
+  frequency             String?
+  linkedDebtId          String?
+  linkedTransactionId   String?
+  
+  participants          ParticipantShare[]
+}
+
+model ParticipantShare {
+  id                String                      @id @default(uuid())
+  pendingExpenseId  String
+  pendingExpense    PendingExpense              @relation(fields: [pendingExpenseId], references: [id], onDelete: Cascade)
+  name              String
+  isOwner           Boolean                     @default(false)
+  assignedAmount    Float
+  paidAmount        Float                       @default(0)
+  isSettled         Boolean                     @default(false)
+  payments          ParticipantPaymentRecord[]
+}
+
+model ParticipantPaymentRecord {
+  id            String           @id @default(uuid())
+  participantId String
+  participant   ParticipantShare @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  amount        Float
+  paidAt        DateTime         @default(now())
+  notes         String?
+}
+
+model SharedFamilyDebt {
+  id                  String                    @id @default(uuid())
+  familyGroupId       String
+  familyGroup         FamilyGroup               @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  title               String
+  tag                 String
+  totalOriginalAmount Float
+  installmentsCount   Int
+  installmentAmount   Float
+  frequency           String                    @default("mensual")
+  startYear           Int
+  startMonth          Int
+  startQuincena       Int                       @default(1)
+  monthlyDistribution String                    @default("both_equal")
+  scope               String                    @default("shared") // personal | shared
+  payerUserId         String?
+  payerUser           User?                     @relation("SharedDebtPayer", fields: [payerUserId], references: [id], onDelete: SetNull)
+  payerUserName       String?
+  splitMethod         String                    @default("equal") // equal | percentage | custom_amount
+  createdByUserId     String
+  creator             User                      @relation("SharedDebtCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserName   String
+  createdAt           DateTime                  @default(now())
+  notes               String?
+  isArchived          Boolean                   @default(false)
+  participants        SharedParticipantShare[]
+  abonos              SharedFamilyDebtAbono[]
+}
+
+model SharedParticipantShare {
+  id                 String               @id @default(uuid())
+  sharedDebtId       String?
+  sharedDebt         SharedFamilyDebt?    @relation(fields: [sharedDebtId], references: [id], onDelete: Cascade)
+  sharedSavingsId    String?
+  sharedSavings      SharedFamilySavings? @relation(fields: [sharedSavingsId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName           String
+  userEmail          String?
+  isPayer            Boolean              @default(false)
+  assignedPercentage Float?
+  assignedAmount     Float
+}
+
+model SharedFamilyDebtAbono {
+  id           String           @id @default(uuid())
+  sharedDebtId String
+  sharedDebt   SharedFamilyDebt @relation(fields: [sharedDebtId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName     String
+  userEmail    String
+  amount       Float
+  date         String           // YYYY-MM-DD
+  paidAt       DateTime         @default(now())
+  notes        String?
+}
+
+model SharedFamilySavings {
+  id                    String                         @id @default(uuid())
+  familyGroupId         String
+  familyGroup           FamilyGroup                    @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  name                  String
+  tag                   String
+  targetAmount          Float
+  periodicTargetAmount  Float?
+  frequency             String                         @default("mensual")
+  startYear             Int
+  startMonth            Int
+  startQuincena         Int                            @default(1)
+  monthlyDistribution   String                         @default("both_equal")
+  scope                 String                         @default("shared")
+  splitMethod           String                         @default("equal")
+  createdByUserId       String
+  creator               User                           @relation("SharedSavingCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserName     String
+  createdAt             DateTime                       @default(now())
+  notes                 String?
+  isArchived            Boolean                        @default(false)
+  participants          SharedParticipantShare[]
+  deposits              SharedFamilySavingsDeposit[]
+}
+
+model SharedFamilySavingsDeposit {
+  id              String              @id @default(uuid())
+  sharedSavingsId String
+  sharedSavings   SharedFamilySavings @relation(fields: [sharedSavingsId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName        String
+  userEmail       String
+  amount          Float
+  date            String              // YYYY-MM-DD
+  depositedAt     DateTime            @default(now())
+  notes           String?
+}

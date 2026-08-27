@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ahorro_quincenal_db
+    restart: always
+    # ports:
+    #   - "5438:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Contrasena14.
+      POSTGRES_DB: ahorro_quincenal
+    volumes:
+      - ahorro_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ahorro_quincenal" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: /share/CACHEDEV1_DATA/docker/ahorro-quincenal
+      dockerfile: Dockerfile
+    container_name: ahorro_quincenal_app
+    restart: always
+    ports:
+      - "3040:3040"
+    environment:
+      DATABASE_URL: "postgresql://postgres:Contrasena14.@db:5432/ahorro_quincenal?schema=public"
+      JWT_SECRET: "mi_clave_secreta_quincenal_2026"
+      PORT: 3040
+      NODE_ENV: production
+    volumes:
+      - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/dist:/app/dist
+      - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/dist-server:/app/dist-server
+      - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/server/wait-for-db.js:/app/server/wait-for-db.js
+    depends_on:
+      db:
+        condition: service_healthy
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: ahorro_quincenal_tunnel
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: eyJhIjoiMzI5YTA4NGU2NzlkYTFiMTdjNDZlNDMzMTIxN2IwMWIiLCJ0IjoiNTNhOTU3NjAtZjZhMy00NTgxLWFhNTMtNTYyYzFhMzU2ODFiIiwicyI6Ik1HWXdObVk1WVRNdE5qUmxaQzAwWWpVMExXSTBNR0l0TlRnd04yWmhOV1V3TkRoaSJ9
+    depends_on:
+      - app
+
+volumes:
+  ahorro_postgres_data:

@@ -1,0 +1,6 @@
+{
+  "name": "Finanzas y Ahorro Quincenal",
+  "description": "Sistema integral de ahorro personal, control de gastos fijos y esporádicos, gestión de deudas diferidas, división de gastos compartidos y presupuesto quincenal y mensual.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

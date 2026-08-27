@@ -1,0 +1,802 @@
+@import "tailwindcss";
+
+/* Touch & Mobile UX Enhancements */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  overflow-x: hidden;
+  min-width: 320px;
+}
+
+/* Custom scrollbar handling for horizontal containers on mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile specific viewport and touch adaptations */
+@media (max-width: 640px) {
+  /* Ensure comfortable tap targets and no overflow */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Smooth momentum scrolling on mobile devices */
+  .overflow-y-auto, .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Safe area support for mobile devices with notches/home indicators */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ==========================================
+   DAY MODE BASE & SIDEBAR OVERRIDES
+   (When .dark class is NOT present on html)
+   ========================================== */
+html:not(.dark) body {
+  background-color: #f1f5f9 !important; /* slate-100 */
+  color: #1e293b !important;
+}
+
+html:not(.dark) #app-sidebar {
+  background-color: #1e293b !important; /* Slate 800 (más oscurito y llamativo) */
+  color: #cbd5e1 !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.4) !important;
+}
+
+html:not(.dark) #app-sidebar button {
+  color: #94a3b8 !important;
+}
+
+html:not(.dark) #app-sidebar button:hover:not(.bg-emerald-500\/15) {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+html:not(.dark) #app-sidebar button.bg-emerald-500\/15 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+html:not(.dark) #app-sidebar #btn-sidebar-brand-toggle span {
+  color: #ffffff !important;
+}
+
+/* Day Mode Soft Dividers */
+html:not(.dark) #app-sidebar .border-b,
+html:not(.dark) #app-sidebar .border-t,
+html:not(.dark) #app-sidebar .border-r {
+  border-color: rgba(51, 65, 85, 0.4) !important;
+}
+
+html:not(.dark) #app-sidebar .bg-slate-800\/60 {
+  background-color: rgba(30, 41, 59, 0.6) !important;
+  border-color: rgba(71, 85, 105, 0.4) !important;
+}
+
+html:not(.dark) #app-sidebar .text-slate-300,
+html:not(.dark) #app-sidebar .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+html:not(.dark) #app-sidebar .text-slate-200 {
+  color: #e2e8f0 !important;
+}
+
+html:not(.dark) #app-sidebar .bg-slate-950\/40 {
+  background-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+html:not(.dark) #app-sidebar .bg-slate-900\/80 {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  border-color: rgba(51, 65, 85, 0.5) !important;
+  color: #ffffff !important;
+}
+
+html:not(.dark) #app-sidebar .text-slate-200.font-bold {
+  color: #ffffff !important;
+}
+
+html:not(.dark) #app-sidebar .bg-slate-800 {
+  background-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+/* Day Mode Sliding Toggle Switch */
+html:not(.dark) #app-sidebar .bg-slate-950\/45 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+/* ==========================================
+   DARK MODE CUSTOM STYLING OVERRIDES
+   ========================================== */
+.dark body {
+  background-color: #090d16 !important; /* Deep navy dark */
+  color: #f1f5f9 !important;
+}
+
+/* Dark Mode Sidebar */
+.dark #app-sidebar {
+  background-color: #020617 !important; /* Deep dark blue-black */
+  border-right: 1px solid #1e293b !important;
+}
+
+.dark #app-sidebar .bg-slate-950\/45 {
+  background-color: rgba(2, 6, 23, 0.8) !important;
+  border-color: #1e293b !important;
+}
+
+/* Main content wrapper */
+.dark .bg-slate-100\/70 {
+  background-color: #090d16 !important;
+}
+
+/* Cards and Panels */
+.bg-white,
+.bg-white\/95,
+.bg-white\/90,
+.bg-white\/85,
+.bg-white\/80,
+.bg-white\/75,
+.bg-white\/70,
+.bg-slate-50,
+.bg-slate-50\/95,
+.bg-slate-50\/90,
+.bg-slate-50\/85,
+.bg-slate-50\/80,
+.bg-slate-50\/75,
+.bg-slate-50\/70 {
+  background-color: #ffffff !important;
+}
+
+.dark .bg-white,
+.dark .bg-white\/95,
+.dark .bg-white\/90,
+.dark .bg-white\/85,
+.dark .bg-white\/80,
+.dark .bg-white\/75,
+.dark .bg-white\/70,
+.dark .bg-slate-50,
+.dark .bg-slate-50\/95,
+.dark .bg-slate-50\/90,
+.dark .bg-slate-50\/85,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-50\/75,
+.dark .bg-slate-50\/70 {
+  background-color: #131c2e !important; /* Lighter navy-slate card */
+  border-color: #222f47 !important;
+  color: #f8fafc !important;
+}
+
+/* Borders */
+.dark .border-slate-200,
+.dark .border-slate-200\/90,
+.dark .border-slate-100 {
+  border-color: #222f47 !important;
+}
+
+.dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+
+
+/* Text Overrides for high contrast in dark mode */
+.dark .text-slate-800,
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1 !important; /* light gray-blue */
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #94a3b8 !important; /* muted gray-blue */
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Inputs, Selects and Textareas */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #090d16 !important;
+  border-color: #222f47 !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569 !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #10b981 !important;
+  outline: none;
+}
+
+/* Select option styling */
+.dark option {
+  background-color: #131c2e !important;
+  color: #f8fafc !important;
+}
+
+/* Modals */
+.dark .shadow-2xl.bg-white {
+  background-color: #131c2e !important;
+  border-color: #222f47 !important;
+}
+
+/* Tab bar active lights */
+.dark .bg-slate-950\/80 {
+  background-color: #222f47 !important;
+  border-color: #334155 !important;
+}
+
+/* Lists and hover items */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1c273d !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #1c273d !important;
+}
+
+.dark .hover\:border-slate-300:hover {
+  border-color: #334155 !important;
+}
+
+/* Calendar grid active elements */
+.dark .bg-slate-100 {
+  background-color: #1c273d !important;
+}
+
+.dark .text-slate-950 {
+  color: #090d16 !important;
+}
+
+/* Dark Mode Colored Alerts and Badges Overrides */
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/90,
+.dark .bg-emerald-50\/60,
+.dark .bg-emerald-50\/50,
+.dark .bg-emerald-50\/70,
+.dark .bg-emerald-100,
+.dark .bg-emerald-100\/70 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+.dark .bg-rose-50,
+.dark .bg-rose-50\/60,
+.dark .bg-rose-50\/50,
+.dark .bg-rose-50\/70,
+.dark .bg-rose-50\/40,
+.dark .bg-rose-100,
+.dark .bg-rose-100\/70 {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+  border-color: rgba(244, 63, 94, 0.25) !important;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-50\/80,
+.dark .bg-amber-50\/30,
+.dark .bg-amber-50\/60,
+.dark .bg-amber-50\/70,
+.dark .bg-amber-100,
+.dark .bg-amber-100\/70 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+.dark .bg-indigo-50,
+.dark .bg-indigo-50\/70,
+.dark .bg-indigo-50\/60,
+.dark .bg-indigo-50\/40,
+.dark .bg-indigo-100 {
+  background-color: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+.dark .bg-indigo-600 {
+  background-color: #0284c7 !important;
+}
+
+.dark .bg-indigo-700 {
+  background-color: #0369a1 !important;
+}
+
+.dark .hover\:bg-indigo-700:hover {
+  background-color: #0369a1 !important;
+}
+
+.dark .bg-blue-50,
+.dark .bg-blue-50\/70,
+.dark .bg-blue-50\/50,
+.dark .bg-blue-100,
+.dark .bg-blue-100\/70 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark .bg-teal-50,
+.dark .bg-teal-50\/50,
+.dark .bg-teal-50\/60,
+.dark .bg-teal-50\/40,
+.dark .bg-teal-100 {
+  background-color: rgba(20, 184, 166, 0.12) !important;
+  border-color: rgba(20, 184, 166, 0.25) !important;
+}
+
+/* Dark Mode Alert & Badge High Contrast Text Overrides */
+.dark .text-emerald-950,
+.dark .text-emerald-900,
+.dark .text-emerald-800,
+.dark .text-emerald-700,
+.dark .text-emerald-600 {
+  color: #34d399 !important;
+}
+
+.dark .text-rose-950,
+.dark .text-rose-900,
+.dark .text-rose-800,
+.dark .text-rose-700,
+.dark .text-rose-600 {
+  color: #fb7185 !important;
+}
+
+.dark .text-amber-955,
+.dark .text-amber-950,
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-amber-700,
+.dark .text-amber-600 {
+  color: #fbbf24 !important;
+}
+
+.dark .text-indigo-950,
+.dark .text-indigo-900,
+.dark .text-indigo-850,
+.dark .text-indigo-800,
+.dark .text-indigo-700,
+.dark .text-indigo-600 {
+  color: #38bdf8 !important;
+}
+
+.dark .text-blue-950,
+.dark .text-blue-900,
+.dark .text-blue-800,
+.dark .text-blue-700,
+.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+.dark .text-teal-950,
+.dark .text-teal-900,
+.dark .text-teal-800,
+.dark .text-teal-700,
+.dark .text-teal-600 {
+  color: #2dd4bf !important;
+}
+
+/* Opacity-variant text overrides for high contrast on dark backgrounds */
+.dark .text-indigo-700\/80 {
+  color: rgba(56, 189, 248, 0.85) !important;
+}
+.dark .text-teal-700\/80 {
+  color: rgba(45, 212, 191, 0.85) !important;
+}
+.dark .text-emerald-700\/80 {
+  color: rgba(52, 211, 153, 0.85) !important;
+}
+.dark .text-rose-700\/80 {
+  color: rgba(251, 113, 133, 0.85) !important;
+}
+.dark .text-amber-700\/80 {
+  color: rgba(251, 191, 36, 0.85) !important;
+}
+.dark .text-blue-700\/80 {
+  color: rgba(96, 165, 250, 0.85) !important;
+}
+
+/* Dotted Background Opacity & Z-Index Override for High Contrast */
+#dotted-background-overlay {
+  z-index: -1 !important;
+}
+
+.dark #dotted-background-overlay {
+  opacity: 0.95 !important;
+  filter: brightness(2.8) contrast(1.1);
+}
+
+/* Calendar Day Cell Overrides (Cajones de fecha) */
+.dark .bg-slate-50\/50 {
+  background-color: rgba(30, 41, 59, 0.3) !important;
+  border-color: #222f47 !important;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  cursor: pointer;
+}
+
+/* Header Month Navigator and Period selector Overrides */
+.dark .bg-slate-100\/80,
+.dark .bg-slate-100\/90,
+.dark .bg-slate-100 {
+  background-color: #131c2e !important;
+  border-color: #222f47 !important;
+}
+
+.dark #btn-prev-period,
+.dark #btn-next-period {
+  color: #cbd5e1 !important;
+}
+
+.dark #btn-prev-period:hover,
+.dark #btn-next-period:hover {
+  background-color: #222f47 !important;
+  color: #ffffff !important;
+}
+
+.dark .hover\:bg-slate-200\/70:hover {
+  background-color: #222f47 !important;
+}
+
+.dark .hover\:text-slate-900:hover {
+  color: #ffffff !important;
+}
+
+/* User Profile Dropdown light mode overrides */
+html:not(.dark) #profile-dropdown-menu {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html:not(.dark) #profile-dropdown-menu button {
+  color: #475569 !important;
+}
+
+html:not(.dark) #profile-dropdown-menu button:hover:not(.text-rose-500) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html:not(.dark) #profile-dropdown-menu .border-b {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) #profile-dropdown-menu .text-white {
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   MEDIA QUERIES FOR MOBILE AND TABLET RESPONSIVENESS
+   (Desktop layout and design remains 100% untouched)
+   ========================================================================== */
+
+/* 1. TABLET RESPONSIVE LAYOUTS (min-width: 641px) and (max-width: 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Reduce main workspace margins slightly */
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    max-width: 100% !important;
+  }
+
+  /* Grid adjustments for Dashboard and modules */
+  .grid-cols-5, 
+  .lg\:grid-cols-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-4,
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Adjust calendar detail split panel */
+  .lg\:grid-cols-12 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\:col-span-8,
+  .lg\:col-span-4 {
+    grid-column: span 12 / span 12 !important;
+  }
+}
+
+/* 2. MOBILE RESPONSIVE LAYOUTS (max-width: 640px) */
+@media (max-width: 640px) {
+  /* Reset general page/main padding */
+  main {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 3rem !important;
+  }
+
+  /* General Typography Scale Down */
+  h1 {
+    font-size: 1.25rem !important; /* text-xl */
+  }
+  h2 {
+    font-size: 1.125rem !important; /* text-lg */
+  }
+  h3 {
+    font-size: 1rem !important; /* text-base */
+  }
+
+  /* Force vertical layouts on typical grids */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .sm\:grid-cols-2,
+  .sm\:grid-cols-3,
+  .sm\:grid-cols-4,
+  .lg\:grid-cols-2,
+  .lg\:grid-cols-3,
+  .lg\:grid-cols-4,
+  .lg\:grid-cols-5 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Specific exceptions where 2 cols fit well on mobile */
+  .grid-cols-2-mobile-ok,
+  .grid-cols-2.lg\:grid-cols-4,
+  .grid-cols-2.sm\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Mobile horizontal navigation tabs (Header scrolling tabs) */
+  nav.overflow-x-auto {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding-bottom: 0.25rem !important;
+  }
+  nav.overflow-x-auto::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Flex elements that should stack vertically on mobile */
+  .flex-wrap-mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  /* ==========================================
+     MODULE SPECIFIC ADJUSTMENTS
+     ========================================== */
+
+  /* A. Dashboard adjustments */
+  #btn-goto-period-balance {
+    width: 100% !important;
+    justify-content: center !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  /* B. PeriodBalanceView and FreeBalanceCard */
+  #card-free-balance-allocator .grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+  
+  #input-spendable-amount,
+  #input-keep-amount {
+    font-size: 1rem !important;
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+  }
+
+  /* C. PendingExpensesManager */
+  .overflow-x-auto.pb-1 {
+    display: flex !important;
+    gap: 0.35rem !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  #btn-add-pending-expense {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* D. Individual transaction/debt/saving card layout */
+  [id^="tx-card-"],
+  [id^="scheduled-card-"],
+  [id^="debt-card-"],
+  [id^="savings-card-"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    padding: 0.85rem !important;
+  }
+
+  [id^="tx-card-"] > div:last-child,
+  [id^="scheduled-card-"] > div:last-child {
+    border-top: 1px solid rgba(226, 232, 240, 0.6) !important;
+    padding-top: 0.6rem !important;
+    width: 100% !important;
+    justify-content: justify !important;
+  }
+
+  .dark [id^="tx-card-"] > div:last-child,
+  .dark [id^="scheduled-card-"] > div:last-child {
+    border-top-color: rgba(34, 47, 71, 0.6) !important;
+  }
+
+  /* E. FinancialCalendarView (Calendar Grid Optimization) */
+  /* Remove text montos in cells and replace with color dots */
+  [key^="cell-"] .space-y-1.my-1 {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    margin-top: 0.25rem !important;
+    flex-wrap: wrap !important;
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div {
+    width: 6px !important;
+    height: 6px !important;
+    min-height: 6px !important;
+    border-radius: 9999px !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div span {
+    display: none !important; /* Hide Compact Currency Text */
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div .bg-emerald-500,
+  [key^="cell-"] .space-y-1.my-1 > div.bg-emerald-50\/80,
+  [key^="cell-"] .space-y-1.my-1 > div.bg-emerald-50\/60,
+  [key^="cell-"] .space-y-1.my-1 > div.bg-emerald-50 {
+    background-color: #10b981 !important; /* Emerald green */
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div.bg-rose-50\/60,
+  [key^="cell-"] .space-y-1.my-1 > div.bg-rose-50 {
+    background-color: #f43f5e !important; /* Rose red */
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div.bg-amber-50 {
+    background-color: #f59e0b !important; /* Amber yellow */
+  }
+
+  [key^="cell-"] .space-y-1.my-1 > div.bg-blue-50 {
+    background-color: #3b82f6 !important; /* Blue family */
+  }
+
+  /* Force Day view panel below the calendar grid */
+  .lg\:grid-cols-12 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    gap: 1rem !important;
+  }
+
+  .lg\:col-span-8,
+  .lg\:col-span-4 {
+    grid-column: span 12 / span 12 !important;
+  }
+
+  /* F. SharedFinancesManager & Forms */
+  form input, 
+  form select, 
+  form textarea, 
+  form button {
+    width: 100% !important;
+  }
+
+  /* Exclude inline buttons in forms on mobile */
+  form button.shrink-0,
+  form button.w-fit,
+  form button.w-auto {
+    width: auto !important;
+  }
+
+  .form-row-mobile-stack {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Make sure modals fit well on mobile screens */
+  .shadow-2xl.bg-white {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1.15rem !important; /* Slightly more compact padding */
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Stack actions buttons inside modal footers for finger comfort */
+  .fixed.inset-0.z-50.flex.items-center.justify-center form div.flex.justify-end,
+  .fixed.inset-0.z-50.flex.items-center.justify-center div.flex.justify-end,
+  .fixed.inset-0.z-50.flex.items-center.justify-center div.modal-actions {
+    flex-direction: column-reverse !important;
+    gap: 0.5rem !important;
+    margin-top: 1.25rem !important;
+    width: 100% !important;
+  }
+
+  .fixed.inset-0.z-50.flex.items-center.justify-center form div.flex.justify-end button,
+  .fixed.inset-0.z-50.flex.items-center.justify-center div.flex.justify-end button,
+  .fixed.inset-0.z-50.flex.items-center.justify-center div.modal-actions button {
+    width: 100% !important;
+    margin: 0 !important;
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+    font-size: 0.85rem !important;
+    justify-content: center !important;
+  }
+
+  /* Modal Title and header icon compact format */
+  [id^="modal-"] .flex.items-center.gap-3.border-b,
+  .fixed.inset-0.z-50 .flex.items-center.gap-3.border-b {
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Compact alerts and status banner elements on mobile */
+  .bg-amber-50, 
+  .bg-rose-50, 
+  .bg-emerald-50, 
+  .bg-teal-50, 
+  .bg-indigo-50,
+  .bg-amber-50\/80,
+  .bg-rose-50\/60,
+  .bg-emerald-50\/60,
+  .bg-teal-50\/50,
+  .bg-rose-50\/50 {
+    padding: 0.75rem !important;
+    border-radius: 0.75rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .bg-amber-50 div, 
+  .bg-rose-50 div, 
+  .bg-emerald-50 div, 
+  .bg-teal-50 div, 
+  .bg-indigo-50 div,
+  .bg-amber-50\/80 div {
+    font-size: 0.75rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .bg-amber-50 span, 
+  .bg-rose-50 span, 
+  .bg-emerald-50 span, 
+  .bg-teal-50 span, 
+  .bg-indigo-50 span,
+  .bg-amber-50\/80 span {
+    font-size: 0.75rem !important;
+  }
+}
+
+
