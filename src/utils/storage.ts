@@ -653,3 +653,92 @@ export async function removeMemberFromFamilyGroup(
   }
 }
 
+// ----------------------------------------------------
+// USER QR CODE API HELPERS
+// ----------------------------------------------------
+export async function getUserQRs(): Promise<any[]> {
+  const res = await fetch(`${API_URL}/user/qrs`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al obtener QRs');
+  }
+  return res.json();
+}
+
+export async function uploadUserQR(data: { accountName: string; bankName: string; accountType: string; qrImageBase64: string }): Promise<any> {
+  const res = await fetch(`${API_URL}/user/qrs/upload`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al cargar QR');
+  }
+  return res.json();
+}
+
+export async function deleteUserQR(qrId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/user/qrs/${qrId}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al eliminar QR');
+  }
+}
+
+// ----------------------------------------------------
+// GROUP SIMULATOR API HELPERS
+// ----------------------------------------------------
+export async function getSimulatorData(groupId: string): Promise<{ sharedExpenses: any[]; contributions: any[] }> {
+  const res = await fetch(`${API_URL}/family/simulator/${groupId}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al obtener datos del simulador');
+  }
+  return res.json();
+}
+
+export async function saveSimulatorExpense(groupId: string, data: { id?: string; name: string; monthlyAmount: number }): Promise<any> {
+  const res = await fetch(`${API_URL}/family/simulator/${groupId}/expense`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al guardar gasto del simulador');
+  }
+  return res.json();
+}
+
+export async function deleteSimulatorExpense(groupId: string, expenseId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/family/simulator/${groupId}/expense/${expenseId}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al eliminar gasto del simulador');
+  }
+}
+
+export async function saveSimulatorContribution(groupId: string, data: { declaredIncome: number; hideIncome: boolean; usePersonalConfig: boolean }): Promise<any> {
+  const res = await fetch(`${API_URL}/family/simulator/${groupId}/contribution`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || 'Error al guardar datos de aporte');
+  }
+  return res.json();
+}
+

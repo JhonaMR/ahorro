@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes';
 import personalRoutes from './routes/personal.routes';
@@ -11,6 +12,12 @@ import adminRoutes from './routes/admin.routes';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Asegurar existencia de la carpeta de subidas de códigos QR
+const uploadsDir = path.join(__dirname, '../uploads/qrs');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3040;
@@ -23,7 +30,8 @@ app.use(helmet({
   contentSecurityPolicy: false, // Desactivar CSP para evitar problemas con la carga de estilos/scripts de React
 }));
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Limitador de peticiones para evitar fuerza bruta en el Login
 const loginLimiter = rateLimit({

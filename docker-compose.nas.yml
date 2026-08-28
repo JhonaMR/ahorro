@@ -35,6 +35,7 @@ services:
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/dist-server:/app/dist-server
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/prisma:/app/prisma
       - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/server/wait-for-db.js:/app/server/wait-for-db.js
+      - /share/CACHEDEV1_DATA/docker/ahorro-quincenal/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy

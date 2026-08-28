@@ -37,6 +37,8 @@ model User {
   sharedDebtAbonos    SharedFamilyDebtAbono[]
   sharedSavingDeposits SharedFamilySavingsDeposit[]
   sharedDebtShares    SharedParticipantShare[]
+  paymentQRs          UserPaymentQR[]
+  groupContributions  FamilyGroupMemberContribution[]
 }
 
 model FamilyGroup {
@@ -54,6 +56,8 @@ model FamilyGroup {
   // Shared items
   sharedDebts         SharedFamilyDebt[]
   sharedSavings       SharedFamilySavings[]
+  groupSharedExpenses FamilyGroupSharedExpense[]
+  groupContributions  FamilyGroupMemberContribution[]
 }
 
 model FamilyGroupMember {
@@ -85,6 +89,13 @@ model AppConfig {
   suggestedExpenseTags     String[]                 @default(["Ocio", "Restaurantes", "Tecnología", "Bebidas", "Hogar", "Otro"])
   currencyCode             String                   @default("COP")
   currencySymbol           String                   @default("$")
+  
+  // Colchón de Seguridad inicializable
+  initialCushionBalance    Float                    @default(0)
+  cushionStartYear         Int                      @default(2026)
+  cushionStartMonth        Int                      @default(0)
+  cushionStartQuincena     Int                      @default(1)
+
   additionalFixedExpenses  AdditionalFixedExpense[]
 }
 
@@ -180,6 +191,9 @@ model SporadicTransaction {
   isScheduled Boolean  @default(false)
   notes       String?
   isCompleted Boolean  @default(false)
+  
+  // Origen/Destino del flujo (pocket = bolsillo, cushion = colchón)
+  paymentSource String   @default("pocket") 
 }
 
 model BalanceAllocation {
@@ -345,4 +359,38 @@ model SharedFamilySavingsDeposit {
   date            String              // YYYY-MM-DD
   depositedAt     DateTime            @default(now())
   notes           String?
+}
+
+model UserPaymentQR {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountName String
+  bankName    String
+  accountType String   // ahorro | corriente
+  qrImageUrl  String   // Ruta pública del archivo
+  createdAt   DateTime @default(now())
+}
+
+model FamilyGroupSharedExpense {
+  id            String      @id @default(uuid())
+  familyGroupId String
+  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  name          String
+  monthlyAmount Float
+  createdAt     DateTime    @default(now())
+}
+
+model FamilyGroupMemberContribution {
+  id                String      @id @default(uuid())
+  familyGroupId     String
+  familyGroup       FamilyGroup @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  declaredIncome    Float       @default(0)
+  hideIncome        Boolean     @default(false)
+  usePersonalConfig Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+
+  @@unique([familyGroupId, userId])
 }

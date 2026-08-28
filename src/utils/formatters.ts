@@ -181,10 +181,8 @@ export function getDebtDueForPeriod(debt: DebtItem, period: PeriodSelection): nu
   }
 
   // Frequency is mensual, but viewing quincenal
-  const monthOffset = (period.year * 12 + period.month) - (debt.startYear * 12 + debt.startMonth);
-  if (monthOffset < 0 || monthOffset >= debt.installmentsCount) {
-    return 0;
-  }
+  const startMonthIndex = debt.startYear * 12 + debt.startMonth;
+  const currentMonthIndex = period.year * 12 + period.month;
 
   const { q1, q2 } = getSplitAmounts(
     debt.installmentAmount,
@@ -193,8 +191,27 @@ export function getDebtDueForPeriod(debt: DebtItem, period: PeriodSelection): nu
     debt.customQ2Amount
   );
 
-  const due = period.quincena === 1 ? q1 : q2;
-  return Math.min(due, remainingTotal);
+  if (debt.startQuincena === 2) {
+    if (currentMonthIndex === startMonthIndex) {
+      if (period.quincena === 1) return 0;
+      return Math.min(q2, remainingTotal);
+    }
+    if (currentMonthIndex > startMonthIndex && currentMonthIndex < startMonthIndex + debt.installmentsCount) {
+      const due = period.quincena === 1 ? q1 : q2;
+      return Math.min(due, remainingTotal);
+    }
+    if (currentMonthIndex === startMonthIndex + debt.installmentsCount) {
+      if (period.quincena === 2) return 0;
+      return Math.min(q1, remainingTotal);
+    }
+    return 0;
+  } else {
+    if (currentMonthIndex < startMonthIndex || currentMonthIndex >= startMonthIndex + debt.installmentsCount) {
+      return 0;
+    }
+    const due = period.quincena === 1 ? q1 : q2;
+    return Math.min(due, remainingTotal);
+  }
 }
 
 // Calculate liquidation payoff period
@@ -216,9 +233,10 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
   );
 
   const paidInstallmentsCount = debt.payments.length;
+  // Calculate remaining installments needed based on remaining balance and installment amount
   const remainingInstallmentsCount = isFullyPaid
     ? 0
-    : Math.max(0, debt.installmentsCount - paidInstallmentsCount);
+    : Math.max(0, Math.ceil(remainingBalance / debt.installmentAmount));
 
   if (isFullyPaid) {
     return {
@@ -232,10 +250,11 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
     };
   }
 
+  const totalInstallmentsProjected = paidInstallmentsCount + remainingInstallmentsCount;
+
   if (debt.frequency === 'quincenal') {
     const startPIndex = calculatePeriodIndex(debt.startYear, debt.startMonth, debt.startQuincena);
-    // End period is start + total installments - 1
-    const endPIndex = startPIndex + debt.installmentsCount - 1;
+    const endPIndex = startPIndex + totalInstallmentsProjected - 1;
     const endPeriod = getPeriodFromIndex(endPIndex);
     const monthName = MONTH_NAMES_ES[endPeriod.month];
     const estimatedPayoffDate = `Q${endPeriod.quincena} de ${monthName}, ${endPeriod.year}`;
@@ -251,7 +270,7 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
     };
   } else {
     // Mensual frequency
-    const totalMonths = debt.startYear * 12 + debt.startMonth + debt.installmentsCount - 1;
+    const totalMonths = debt.startYear * 12 + debt.startMonth + totalInstallmentsProjected - 1;
     const endMonth = totalMonths % 12;
     const endYear = Math.floor(totalMonths / 12);
     const monthName = MONTH_NAMES_ES[endMonth];
@@ -278,21 +297,36 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
 export function getSavingsDueForPeriod(savings: SavingsProgram, period: PeriodSelection): number {
   if (savings.isArchived) return 0;
 
+  const startMonthIndex = savings.startYear * 12 + savings.startMonth;
+  const currentMonthIndex = period.year * 12 + period.month;
+
   if (period.periodType === 'mes') {
+    if (currentMonthIndex < startMonthIndex) return 0;
     if (savings.frequency === 'mensual') {
       return savings.periodicAmount;
     } else {
-      // Quincenal: monthly is twice the periodic
+      // Quincenal frequency
+      if (currentMonthIndex === startMonthIndex && savings.startQuincena === 2) {
+        return savings.periodicAmount; // only Q2 contribution in start month
+      }
       return savings.periodicAmount * 2;
     }
   }
 
   // Quincenal view
   if (savings.frequency === 'quincenal') {
+    const currentPIndex = calculatePeriodIndex(period.year, period.month, period.quincena);
+    const startPIndex = calculatePeriodIndex(savings.startYear, savings.startMonth, savings.startQuincena);
+    if (currentPIndex < startPIndex) return 0;
     return savings.periodicAmount;
   }
 
   // Mensual frequency viewed in a quincena
+  if (currentMonthIndex < startMonthIndex) return 0;
+  if (currentMonthIndex === startMonthIndex && savings.startQuincena === 2 && period.quincena === 1) {
+    return 0; // hasn't started yet in Q1
+  }
+
   const { q1, q2 } = getSplitAmounts(
     savings.periodicAmount,
     savings.monthlyDistribution || 'both_equal',

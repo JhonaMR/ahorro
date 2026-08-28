@@ -1,6 +1,12 @@
 import { Router, Response } from 'express';
 import { prisma } from '../db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 
@@ -1153,6 +1159,101 @@ router.delete('/pending-expenses/:id', authenticateToken, async (req: AuthReques
   } catch (err) {
     console.error('Error deleting pending expense:', err);
     res.status(500).json({ error: 'Error al eliminar el gasto pendiente.' });
+  }
+});
+
+// ----------------------------------------------------
+// USER PAYMENT QR CODES
+// ----------------------------------------------------
+router.get('/user/qrs', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const qrs = await prisma.userPaymentQR.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(qrs);
+  } catch (err) {
+    console.error('Error fetching QRs:', err);
+    res.status(500).json({ error: 'Error al obtener los códigos QR.' });
+  }
+});
+
+router.post('/user/qrs/upload', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { accountName, bankName, accountType, qrImageBase64 } = req.body;
+  if (!accountName || !bankName || !accountType || !qrImageBase64) {
+    res.status(400).json({ error: 'Faltan datos obligatorios para registrar el QR.' });
+    return;
+  }
+
+  try {
+    const existingQrs = await prisma.userPaymentQR.findMany({ where: { userId: req.userId } });
+    if (existingQrs.length >= 2) {
+      res.status(400).json({ error: 'Solo puedes tener hasta 2 códigos QR de pago.' });
+      return;
+    }
+
+    // Determine slot (1 or 2)
+    const hasSlot1 = existingQrs.some(q => q.qrImageUrl.includes(`_1.png`) || q.qrImageUrl.includes(`_1.jpg`));
+    const slot = hasSlot1 ? 2 : 1;
+
+    // Decode and save base64 image
+    const matches = qrImageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      res.status(400).json({ error: 'Imagen QR inválida. Debe estar en formato base64.' });
+      return;
+    }
+
+    const fileType = matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    let extension = 'png';
+    if (fileType === 'image/jpeg' || fileType === 'image/jpg') {
+      extension = 'jpg';
+    }
+
+    const fileName = `qr_${req.userId}_${slot}.${extension}`;
+    const filePath = path.join(__dirname, '../../uploads/qrs', fileName);
+
+    fs.writeFileSync(filePath, buffer);
+    const qrImageUrl = `/uploads/qrs/${fileName}`;
+
+    const newQr = await prisma.userPaymentQR.create({
+      data: {
+        userId: req.userId!,
+        accountName: accountName.trim(),
+        bankName: bankName.trim(),
+        accountType: accountType.trim(),
+        qrImageUrl
+      }
+    });
+
+    res.json(newQr);
+  } catch (err) {
+    console.error('Error uploading QR:', err);
+    res.status(500).json({ error: 'Error del servidor al cargar el código QR.' });
+  }
+});
+
+router.delete('/user/qrs/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  try {
+    const qr = await prisma.userPaymentQR.findUnique({ where: { id } });
+    if (!qr || qr.userId !== req.userId) {
+      res.status(403).json({ error: 'No autorizado o no encontrado.' });
+      return;
+    }
+
+    // Delete physical file
+    const fileName = qr.qrImageUrl.replace('/uploads/qrs/', '');
+    const filePath = path.join(__dirname, '../../uploads/qrs', fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await prisma.userPaymentQR.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting QR:', err);
+    res.status(500).json({ error: 'Error del servidor al eliminar el código QR.' });
   }
 });
 

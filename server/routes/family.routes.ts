@@ -40,7 +40,11 @@ router.post('/groups', authenticateToken, async (req: AuthRequest, res: Response
       include: {
         members: {
           include: {
-            user: true
+            user: {
+              include: {
+                paymentQRs: true
+              }
+            }
           }
         }
       }
@@ -112,7 +116,11 @@ router.post('/groups/join', authenticateToken, async (req: AuthRequest, res: Res
       include: {
         members: {
           include: {
-            user: true
+            user: {
+              include: {
+                paymentQRs: true
+              }
+            }
           }
         }
       }
@@ -135,7 +143,11 @@ router.get('/groups', authenticateToken, async (req: AuthRequest, res: Response)
           include: {
             members: {
               include: {
-                user: true
+                user: {
+                  include: {
+                    paymentQRs: true
+                  }
+                }
               }
             }
           }
@@ -179,7 +191,13 @@ router.post('/groups/select', authenticateToken, async (req: AuthRequest, res: R
         familyGroup: {
           include: {
             members: {
-              include: { user: true }
+              include: {
+                user: {
+                  include: {
+                    paymentQRs: true
+                  }
+                }
+              }
             }
           }
         }
@@ -656,6 +674,154 @@ router.delete('/savings/:savingsId/deposits/:depositId', authenticateToken, asyn
   } catch (err) {
     console.error('Error deleting shared deposit:', err);
     res.status(500).json({ error: 'Error al eliminar el depósito.' });
+  }
+});
+
+// ----------------------------------------------------
+// SHARED EXPENSE SIMULATOR ENDPOINTS
+// ----------------------------------------------------
+router.get('/simulator/:groupId', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { groupId } = req.params;
+  try {
+    const isMember = await prisma.familyGroupMember.findUnique({
+      where: { familyGroupId_userId: { familyGroupId: groupId, userId: req.userId! } }
+    });
+    if (!isMember) {
+      res.status(403).json({ error: 'No eres miembro de este grupo familiar.' });
+      return;
+    }
+
+    const sharedExpenses = await prisma.familyGroupSharedExpense.findMany({
+      where: { familyGroupId: groupId },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const contributions = await prisma.familyGroupMemberContribution.findMany({
+      where: { familyGroupId: groupId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json({ sharedExpenses, contributions });
+  } catch (err) {
+    console.error('Error fetching simulator data:', err);
+    res.status(500).json({ error: 'Error del servidor al obtener datos del simulador.' });
+  }
+});
+
+router.post('/simulator/:groupId/expense', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { groupId } = req.params;
+  const { id, name, monthlyAmount } = req.body;
+  if (!name || monthlyAmount === undefined) {
+    res.status(400).json({ error: 'Faltan datos obligatorios (nombre o monto mensual).' });
+    return;
+  }
+
+  try {
+    const isMember = await prisma.familyGroupMember.findUnique({
+      where: { familyGroupId_userId: { familyGroupId: groupId, userId: req.userId! } }
+    });
+    if (!isMember) {
+      res.status(403).json({ error: 'No eres miembro de este grupo familiar.' });
+      return;
+    }
+
+    if (id) {
+      const updated = await prisma.familyGroupSharedExpense.update({
+        where: { id },
+        data: {
+          name: name.trim(),
+          monthlyAmount: parseFloat(monthlyAmount)
+        }
+      });
+      res.json(updated);
+    } else {
+      const created = await prisma.familyGroupSharedExpense.create({
+        data: {
+          familyGroupId: groupId,
+          name: name.trim(),
+          monthlyAmount: parseFloat(monthlyAmount)
+        }
+      });
+      res.json(created);
+    }
+  } catch (err) {
+    console.error('Error saving simulator expense:', err);
+    res.status(500).json({ error: 'Error del servidor al guardar el gasto compartido.' });
+  }
+});
+
+router.delete('/simulator/:groupId/expense/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { groupId, id } = req.params;
+  try {
+    const isMember = await prisma.familyGroupMember.findUnique({
+      where: { familyGroupId_userId: { familyGroupId: groupId, userId: req.userId! } }
+    });
+    if (!isMember) {
+      res.status(403).json({ error: 'No eres miembro de este grupo familiar.' });
+      return;
+    }
+
+    const expense = await prisma.familyGroupSharedExpense.findUnique({ where: { id } });
+    if (!expense || expense.familyGroupId !== groupId) {
+      res.status(404).json({ error: 'Gasto compartido no encontrado o no pertenece a este grupo.' });
+      return;
+    }
+
+    await prisma.familyGroupSharedExpense.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting simulator expense:', err);
+    res.status(500).json({ error: 'Error del servidor al eliminar el gasto compartido.' });
+  }
+});
+
+router.post('/simulator/:groupId/contribution', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const { groupId } = req.params;
+  const { declaredIncome, hideIncome, usePersonalConfig } = req.body;
+  if (declaredIncome === undefined || hideIncome === undefined || usePersonalConfig === undefined) {
+    res.status(400).json({ error: 'Faltan parámetros de contribución requeridos.' });
+    return;
+  }
+
+  try {
+    const isMember = await prisma.familyGroupMember.findUnique({
+      where: { familyGroupId_userId: { familyGroupId: groupId, userId: req.userId! } }
+    });
+    if (!isMember) {
+      res.status(403).json({ error: 'No eres miembro de este grupo familiar.' });
+      return;
+    }
+
+    const contribution = await prisma.familyGroupMemberContribution.upsert({
+      where: {
+        familyGroupId_userId: {
+          familyGroupId: groupId,
+          userId: req.userId!
+        }
+      },
+      update: {
+        declaredIncome: parseFloat(declaredIncome),
+        hideIncome: !!hideIncome,
+        usePersonalConfig: !!usePersonalConfig
+      },
+      create: {
+        familyGroupId: groupId,
+        userId: req.userId!,
+        declaredIncome: parseFloat(declaredIncome),
+        hideIncome: !!hideIncome,
+        usePersonalConfig: !!usePersonalConfig
+      }
+    });
+
+    res.json(contribution);
+  } catch (err) {
+    console.error('Error saving simulator contribution:', err);
+    res.status(500).json({ error: 'Error del servidor al guardar tus datos de aporte.' });
   }
 });
 

@@ -90,12 +90,125 @@ export interface GlobalFinancialMetrics {
   monthlyProjectedFreeBalance: number;
 }
 
+export function calculatePeriodFreeBalance(data: AppData | undefined | null, period: PeriodSelection): number {
+  const config = data?.config || DEFAULT_CONFIG;
+  const debts = data?.debts || [];
+  const savings = data?.savings || [];
+  const sporadicTransactions = data?.sporadicTransactions || [];
+  const currentPeriodKey = getPeriodKey(
+    period.year,
+    period.month,
+    period.periodType === 'quincena' ? period.quincena : undefined
+  );
+
+  // 1. Calculate Fixed Income (Shifted logic: Q1 uses q2, Q2 uses q1)
+  let fixedIncome = 0;
+  if (period.periodType === 'mes') {
+    fixedIncome = config.monthlyFixedIncome;
+  } else {
+    const { q1, q2 } = getSplitAmounts(
+      config.monthlyFixedIncome,
+      config.incomeDistribution,
+      config.customIncomeQ1,
+      config.customIncomeQ2
+    );
+    fixedIncome = period.quincena === 1 ? q2 : q1;
+  }
+
+  // 2. Sporadic Incomes
+  const isPeriodMatch = (txPeriodKey: string) => {
+    if (period.periodType === 'quincena') {
+      return txPeriodKey === currentPeriodKey;
+    } else {
+      const monthPrefix = `${period.year}-${String(period.month + 1).padStart(2, '0')}`;
+      return txPeriodKey.startsWith(monthPrefix);
+    }
+  };
+  const sporadicIncomes = sporadicTransactions.filter(
+    (tx) => tx.type === 'income' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion'
+  );
+  const totalSporadicIncome = sporadicIncomes.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalIncome = fixedIncome + totalSporadicIncome;
+
+  // 3. Fixed Transport
+  let fixedTransportRaw = 0;
+  if (period.periodType === 'mes') {
+    fixedTransportRaw = config.monthlyTransportExpense;
+  } else {
+    const { q1, q2 } = getSplitAmounts(
+      config.monthlyTransportExpense,
+      config.transportDistribution,
+      config.customTransportQ1,
+      config.customTransportQ2
+    );
+    fixedTransportRaw = period.quincena === 1 ? q1 : q2;
+  }
+  const isTransportSkipped = (data?.skippedObligations?.[currentPeriodKey] || []).includes('transport');
+  const fixedTransport = isTransportSkipped ? 0 : fixedTransportRaw;
+
+  // 4. Other Fixed Expenses
+  const otherFixedExpenses = (config.additionalFixedExpenses || []).map((exp) => {
+    let amount = 0;
+    if (period.periodType === 'mes') {
+      amount = exp.monthlyAmount;
+    } else {
+      const { q1, q2 } = getSplitAmounts(
+        exp.monthlyAmount,
+        exp.distribution,
+        exp.customQ1Amount,
+        exp.customQ2Amount
+      );
+      amount = period.quincena === 1 ? q1 : q2;
+    }
+    const isSkipped = (data?.skippedObligations?.[currentPeriodKey] || []).includes(exp.id);
+    return { amount, isSkipped };
+  });
+  const totalOtherFixedExpenses = otherFixedExpenses
+    .filter((e) => !e.isSkipped)
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const totalFixedExpenses = fixedTransport + totalOtherFixedExpenses;
+
+  // 5. Debts
+  const debtDues = debts
+    .filter((d) => !d.isArchived)
+    .map((debt) => ({
+      amountDue: getDebtDueForPeriod(debt, period),
+      isSkipped: (data?.skippedObligations?.[currentPeriodKey] || []).includes(debt.id),
+    }));
+  const totalDebtDue = debtDues
+    .filter((d) => !d.isSkipped)
+    .reduce((sum, d) => sum + d.amountDue, 0);
+
+  // 6. Savings
+  const savingsDues = savings
+    .filter((s) => !s.isArchived)
+    .map((s) => ({
+      amountDue: getSavingsDueForPeriod(s, period),
+      isSkipped: (data?.skippedObligations?.[currentPeriodKey] || []).includes(s.id),
+    }));
+  const totalSavingsDue = savingsDues
+    .filter((s) => !s.isSkipped)
+    .reduce((sum, s) => sum + s.amountDue, 0);
+
+  // 7. Sporadic Expenses
+  const sporadicExpenses = sporadicTransactions.filter(
+    (tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion'
+  );
+  const totalSporadicExpense = sporadicExpenses
+    .filter((tx) => !(data?.skippedObligations?.[currentPeriodKey] || []).includes(tx.id))
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  return totalIncome - (totalFixedExpenses + totalDebtDue + totalSavingsDue + totalSporadicExpense);
+}
+
 export function calculateCarryOver(
   data: AppData | undefined | null,
   targetPeriod: PeriodSelection
 ): { pocketCarryOver: number; cumulativeCushion: number } {
   if (!data) return { pocketCarryOver: 0, cumulativeCushion: 0 };
 
+  const config = data.config || DEFAULT_CONFIG;
   const targetPeriodType = targetPeriod.periodType;
   
   if (targetPeriodType === 'quincena') {
@@ -123,28 +236,61 @@ export function calculateCarryOver(
     
     let currentCarryOver = 0;
     let currentCushion = 0;
+    const cushionStartIndex = calculatePeriodIndex(
+      config.cushionStartYear || 2026,
+      config.cushionStartMonth || 0,
+      config.cushionStartQuincena === 2 ? 2 : 1
+    );
     
     for (let idx = minIndex; idx < targetIndex; idx++) {
       const p = getPeriodFromIndex(idx);
       const periodKey = getPeriodKey(p.year, p.month, p.quincena);
       const allocation = data.balanceAllocations?.[periodKey];
       
-      // Calculate how much was spent in this period
       const isPeriodMatch = (txPeriodKey: string) => txPeriodKey === periodKey;
       const periodExpenses = (data.sporadicTransactions || []).filter(
-        (tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey)
+        (tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion'
       );
       
       const skippedInPeriod = data.skippedObligations?.[periodKey] || [];
       const activeExpenses = periodExpenses.filter((tx) => !skippedInPeriod.includes(tx.id));
       const totalSpent = activeExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+
+      const periodCushionTransactions = (data.sporadicTransactions || []).filter(
+        (tx) => tx.periodKey === periodKey && tx.paymentSource === 'cushion'
+      );
+      const cushionIncomes = periodCushionTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
+      const cushionExpenses = periodCushionTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
       
+      let estSpendable = 0;
+      let estKeep = 0;
+      if (!allocation) {
+        const freeBal = calculatePeriodFreeBalance(data, {
+          periodType: 'quincena',
+          year: p.year,
+          month: p.month,
+          quincena: p.quincena
+        });
+        if (freeBal > 0) {
+          estSpendable = Math.round(freeBal / 2);
+          estKeep = freeBal - estSpendable;
+        }
+      }
+
       if (allocation) {
         const totalPocketBudget = allocation.spendableAmount + currentCarryOver;
         currentCarryOver = Math.max(0, totalPocketBudget - totalSpent);
-        currentCushion += allocation.keepInAccountAmount;
       } else {
-        currentCarryOver = Math.max(0, currentCarryOver - totalSpent);
+        const totalPocketBudget = estSpendable + currentCarryOver;
+        currentCarryOver = Math.max(0, totalPocketBudget - totalSpent);
+      }
+
+      if (idx === cushionStartIndex) {
+        currentCushion += config.initialCushionBalance || 0;
+      }
+      if (idx >= cushionStartIndex) {
+        currentCushion += allocation ? allocation.keepInAccountAmount : estKeep;
+        currentCushion += (cushionIncomes - cushionExpenses);
       }
     }
     
@@ -171,6 +317,7 @@ export function calculateCarryOver(
     const targetMonthIndex = targetPeriod.year * 12 + targetPeriod.month;
     let currentCarryOver = 0;
     let currentCushion = 0;
+    const cushionStartMonthIndex = (config.cushionStartYear || 2026) * 12 + (config.cushionStartMonth || 0);
     
     for (let idx = minMonthIndex; idx < targetMonthIndex; idx++) {
       const year = Math.floor(idx / 12);
@@ -180,19 +327,48 @@ export function calculateCarryOver(
       
       const isPeriodMatch = (txPeriodKey: string) => txPeriodKey.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`);
       const periodExpenses = (data.sporadicTransactions || []).filter(
-        (tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey)
+        (tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion'
       );
       
       const skippedInPeriod = data.skippedObligations?.[periodKey] || [];
       const activeExpenses = periodExpenses.filter((tx) => !skippedInPeriod.includes(tx.id));
       const totalSpent = activeExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+
+      const periodCushionTransactions = (data.sporadicTransactions || []).filter(
+        (tx) => isPeriodMatch(tx.periodKey) && tx.paymentSource === 'cushion'
+      );
+      const cushionIncomes = periodCushionTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
+      const cushionExpenses = periodCushionTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
+      
+      let estSpendable = 0;
+      let estKeep = 0;
+      if (!allocation) {
+        const freeBal = calculatePeriodFreeBalance(data, {
+          periodType: 'mes',
+          year,
+          month,
+          quincena: 1
+        });
+        if (freeBal > 0) {
+          estSpendable = Math.round(freeBal / 2);
+          estKeep = freeBal - estSpendable;
+        }
+      }
       
       if (allocation) {
         const totalPocketBudget = allocation.spendableAmount + currentCarryOver;
         currentCarryOver = Math.max(0, totalPocketBudget - totalSpent);
-        currentCushion += allocation.keepInAccountAmount;
       } else {
-        currentCarryOver = Math.max(0, currentCarryOver - totalSpent);
+        const totalPocketBudget = estSpendable + currentCarryOver;
+        currentCarryOver = Math.max(0, totalPocketBudget - totalSpent);
+      }
+
+      if (idx === cushionStartMonthIndex) {
+        currentCushion += config.initialCushionBalance || 0;
+      }
+      if (idx >= cushionStartMonthIndex) {
+        currentCushion += allocation ? allocation.keepInAccountAmount : estKeep;
+        currentCushion += (cushionIncomes - cushionExpenses);
       }
     }
     
@@ -215,7 +391,7 @@ export function calculatePeriodSummary(data: AppData | undefined | null, period:
   const periodSkippedIds = skippedObligations[currentPeriodKey] || [];
   const isIdSkipped = (id: string) => periodSkippedIds.includes(id);
 
-  // 1. Calculate Fixed Income
+  // 1. Calculate Fixed Income (Shifted logic: Q1 uses q2, Q2 uses q1)
   let fixedIncome = 0;
   if (period.periodType === 'mes') {
     fixedIncome = config.monthlyFixedIncome;
@@ -226,7 +402,7 @@ export function calculatePeriodSummary(data: AppData | undefined | null, period:
       config.customIncomeQ1,
       config.customIncomeQ2
     );
-    fixedIncome = period.quincena === 1 ? q1 : q2;
+    fixedIncome = period.quincena === 1 ? q2 : q1;
   }
 
   // 2. Sporadic Incomes for this period
@@ -240,7 +416,7 @@ export function calculatePeriodSummary(data: AppData | undefined | null, period:
   };
 
   const sporadicIncomes = sporadicTransactions.filter(
-    (tx) => tx.type === 'income' && isPeriodMatch(tx.periodKey)
+    (tx) => tx.type === 'income' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion'
   );
   const totalSporadicIncome = sporadicIncomes.reduce((sum, tx) => sum + tx.amount, 0);
   const totalIncome = fixedIncome + totalSporadicIncome;
@@ -357,7 +533,7 @@ export function calculatePeriodSummary(data: AppData | undefined | null, period:
 
   // 7. Sporadic Expenses for this period
   const sporadicExpenses = sporadicTransactions
-    .filter((tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey))
+    .filter((tx) => tx.type === 'expense' && isPeriodMatch(tx.periodKey) && tx.paymentSource !== 'cushion')
     .map((tx) => ({
       ...tx,
       isSkipped: isIdSkipped(tx.id),
@@ -420,7 +596,37 @@ export function calculatePeriodSummary(data: AppData | undefined | null, period:
 
   const totalPocketBudget = currentSpendable + pocketCarryOver;
   const remainingPocket = totalPocketBudget - totalSporadicExpense;
-  const cumulativeCushion = previousCushion + currentKeepInAccount;
+
+  // Cushion finalization
+  let currentPeriodIndex = 0;
+  let cushionStartIndex = 999999;
+  if (period.periodType === 'quincena') {
+    currentPeriodIndex = calculatePeriodIndex(period.year, period.month, period.quincena!);
+    cushionStartIndex = calculatePeriodIndex(
+      config.cushionStartYear || 2026,
+      config.cushionStartMonth || 0,
+      config.cushionStartQuincena === 2 ? 2 : 1
+    );
+  } else {
+    currentPeriodIndex = period.year * 12 + period.month;
+    cushionStartIndex = (config.cushionStartYear || 2026) * 12 + (config.cushionStartMonth || 0);
+  }
+
+  const currentPeriodCushionTransactions = (data?.sporadicTransactions || []).filter(
+    (tx) => isPeriodMatch(tx.periodKey) && tx.paymentSource === 'cushion'
+  );
+  const cushionIncomes = currentPeriodCushionTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
+  const cushionExpenses = currentPeriodCushionTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
+
+  let cumulativeCushion = previousCushion;
+  if (currentPeriodIndex === cushionStartIndex) {
+    cumulativeCushion += config.initialCushionBalance || 0;
+  }
+  if (currentPeriodIndex >= cushionStartIndex) {
+    cumulativeCushion += currentKeepInAccount + (cushionIncomes - cushionExpenses);
+  } else {
+    cumulativeCushion = 0;
+  }
 
   return {
     period,

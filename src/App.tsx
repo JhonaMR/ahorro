@@ -1,28 +1,32 @@
 import React from 'react';
 import { useFinancialState } from './hooks/useFinancialState';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { PeriodBalanceView } from './components/PeriodBalanceView';
-import { DebtsManager } from './components/DebtsManager';
-import { SavingsManager } from './components/SavingsManager';
-import { SharedFinancesManager } from './components/SharedFinancesManager';
-import { TransactionsManager } from './components/TransactionsManager';
-import { ScheduledManager } from './components/ScheduledManager';
-import { PendingExpensesManager } from './components/PendingExpensesManager';
-import { FinancialCalendarView } from './components/FinancialCalendarView';
-import { AddDebtModal } from './components/AddDebtModal';
-import { AddSavingsModal } from './components/AddSavingsModal';
-import { AddTransactionModal } from './components/AddTransactionModal';
-import { AddPendingExpenseModal } from './components/AddPendingExpenseModal';
-import { RegularizeExpenseModal } from './components/RegularizeExpenseModal';
-import { ParticipantPaymentModal } from './components/ParticipantPaymentModal';
-import { PaymentModal } from './components/PaymentModal';
-import { DepositModal } from './components/DepositModal';
-import { ConfigManager } from './components/ConfigManager';
-import { AuthScreen } from './components/AuthScreen';
-import { DottedBackground } from './components/DottedBackground';
-import { SupportManager } from './components/SupportManager';
+// Common / Layout
+import { Header } from './components/common/Header';
+import { Sidebar } from './components/common/Sidebar';
+import { AuthScreen } from './components/common/AuthScreen';
+import { DottedBackground } from './components/common/DottedBackground';
+import { SupportManager } from './components/common/SupportManager';
+// Personal Finances
+import { Dashboard } from './components/personal/Dashboard';
+import { PeriodBalanceView } from './components/personal/PeriodBalanceView';
+import { DebtsManager } from './components/personal/DebtsManager';
+import { SavingsManager } from './components/personal/SavingsManager';
+import { TransactionsManager } from './components/personal/TransactionsManager';
+import { ScheduledManager } from './components/personal/ScheduledManager';
+import { PendingExpensesManager } from './components/personal/PendingExpensesManager';
+import { FinancialCalendarView } from './components/personal/FinancialCalendarView';
+import { AddDebtModal } from './components/personal/AddDebtModal';
+import { AddSavingsModal } from './components/personal/AddSavingsModal';
+import { AddTransactionModal } from './components/personal/AddTransactionModal';
+import { AddPendingExpenseModal } from './components/personal/AddPendingExpenseModal';
+import { RegularizeExpenseModal } from './components/personal/RegularizeExpenseModal';
+import { PaymentModal } from './components/personal/PaymentModal';
+import { DepositModal } from './components/personal/DepositModal';
+// Shared Finances
+import { SharedFinancesManager } from './components/shared/SharedFinancesManager';
+import { ParticipantPaymentModal } from './components/shared/ParticipantPaymentModal';
+// Config
+import { ConfigManager } from './components/config/ConfigManager';
 
 export default function App() {
   const state = useFinancialState();
@@ -186,6 +190,7 @@ export default function App() {
               period={state.period}
               currencyCode={state.data.config.currencyCode}
               currencySymbol={state.data.config.currencySymbol}
+              skippedObligations={state.data.skippedObligations}
               onOpenAddSavings={() => {
                 state.setSavingsToEdit(null);
                 state.setIsSavingsModalOpen(true);
@@ -219,6 +224,7 @@ export default function App() {
               onAddSharedSavingDeposit={state.handleAddSharedSavingDeposit}
               onDeleteSharedSavingDeposit={state.handleDeleteSharedSavingDeposit}
               onGoToFamilyConfig={() => state.setActiveTab('config')}
+              personalConfig={state.data.config}
             />
           )}
 

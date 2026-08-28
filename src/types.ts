@@ -80,6 +80,7 @@ export interface SporadicTransaction {
   isScheduled: boolean;
   notes?: string;
   isCompleted?: boolean;
+  paymentSource?: string; // pocket | cushion
 }
 
 export interface AdditionalFixedExpense {
@@ -168,6 +169,12 @@ export interface AppConfig {
 
   currencyCode: string; // COP, USD, MXN, EUR, etc.
   currencySymbol: string; // $, €, etc.
+
+  // Colchón de Seguridad
+  initialCushionBalance?: number;
+  cushionStartYear?: number;
+  cushionStartMonth?: number;
+  cushionStartQuincena?: number;
 }
 
 export interface UserAccount {
