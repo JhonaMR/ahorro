@@ -239,7 +239,7 @@ export const SharedSavingsTab: React.FC<SharedSavingsTabProps> = ({
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-250/60 flex items-center justify-center font-bold text-[11px] text-slate-700 uppercase">
-                                    {p.userName.charAt(0)}
+                                    {(p.userName || '?').charAt(0)}
                                   </div>
                                   <div>
                                     <span className="text-xs font-bold text-slate-800 block leading-tight">

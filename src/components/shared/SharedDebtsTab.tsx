@@ -225,8 +225,8 @@ export const SharedDebtsTab: React.FC<SharedDebtsTabProps> = ({
                             <div key={p.userId} className="bg-white rounded-2xl border border-slate-205 p-4 space-y-3 shadow-xs">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-250/60 flex items-center justify-center font-bold text-[11px] text-slate-700 uppercase">
-                                    {p.userName.charAt(0)}
+                                  <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-700 uppercase shrink-0" title={p.userName}>
+                                    {(p.userName || '?').charAt(0)}
                                   </div>
                                   <div>
                                     <span className="text-xs font-bold text-slate-800 block leading-tight">

@@ -17,7 +17,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { UserAccount } from '../../types';
-import { loginUser, registerUser, resetPinForce } from '../../utils/storage';
+import { loginUser, registerUser, resetPinForce, getCurrentDatePeriod, loadAppDataForUser, saveAppDataForUser } from '../../utils/storage';
 import { DottedBackground } from './DottedBackground';
 
 interface AuthScreenProps {
@@ -31,7 +31,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   theme,
   onToggleTheme,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'reset_pin_required'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset_pin_required' | 'onboarding_cushion'>('login');
+  const [onboardingUser, setOnboardingUser] = useState<UserAccount | null>(null);
+
+  const currentPeriod = getCurrentDatePeriod();
+  const [cushionBalance, setCushionBalance] = useState('');
+  const [cushionStartYear, setCushionStartYear] = useState<number>(currentPeriod.year);
+  const [cushionStartMonth, setCushionStartMonth] = useState<number>(currentPeriod.month);
+  const [cushionStartQuincena, setCushionStartQuincena] = useState<number>(currentPeriod.quincena || 1);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -144,13 +151,34 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     const res = await registerUser(registerName, registerEmail, registerPin);
     if (res.success && res.user) {
-      setSuccessMsg('¡Cuenta creada exitosamente! Iniciando sesión...');
+      setSuccessMsg('¡Cuenta creada exitosamente! Configuramos tu colchón de ahorro...');
+      setOnboardingUser(res.user);
       setTimeout(() => {
-        if (res.user) onLoginSuccess(res.user);
-      }, 700);
+        setSuccessMsg(null);
+        setMode('onboarding_cushion');
+      }, 1000);
     } else {
       setErrorMsg(res.error || 'Error al registrar la cuenta.');
     }
+  };
+
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardingUser) return;
+
+    const data = await loadAppDataForUser(onboardingUser.id);
+    if (data) {
+      data.config.initialCushionBalance = Number(cushionBalance.replace(/\D/g, '')) || 0;
+      data.config.cushionStartYear = cushionStartYear;
+      data.config.cushionStartMonth = cushionStartMonth;
+      data.config.cushionStartQuincena = cushionStartQuincena as 1 | 2;
+      await saveAppDataForUser(onboardingUser.id, data);
+    }
+
+    setSuccessMsg('¡Configuración completada! Iniciando sesión...');
+    setTimeout(() => {
+      onLoginSuccess(onboardingUser);
+    }, 700);
   };
 
   return (
@@ -535,6 +563,95 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 }`}
               >
                 Cancelar y Volver
+              </button>
+            </form>
+          )}
+
+          {mode === 'onboarding_cushion' && (
+            <form onSubmit={handleOnboardingSubmit} className="space-y-4 animate-in fade-in zoom-in-95 duration-300 relative z-10">
+              <div className="text-center space-y-1 mb-4">
+                <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Configura tu Colchón
+                </h2>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Ingresa el saldo base inicial de ahorros y la quincena desde la cual empezar.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {/* Initial Cushion Balance */}
+                <div className="space-y-1">
+                  <label className={`block text-xs font-bold ml-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Valor Colchón Inicial
+                  </label>
+                  <div className="relative">
+                    <PiggyBank className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ej. 1000000"
+                      value={cushionBalance}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setCushionBalance(val ? `$ ${parseInt(val).toLocaleString('es-CO')}` : '');
+                      }}
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition duration-300 ${
+                        theme === 'dark'
+                          ? 'bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500'
+                          : 'bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Period Selectors */}
+                <div className="space-y-1">
+                  <label className={`block text-xs font-bold ml-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Fecha de inicio (Por defecto actual)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      value={cushionStartYear}
+                      onChange={(e) => setCushionStartYear(Number(e.target.value))}
+                      className={`w-full px-3 py-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer transition ${
+                        theme === 'dark' ? 'bg-slate-950/80 border border-slate-700/80 text-white' : 'bg-slate-50 border border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      {[2024, 2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+
+                    <select
+                      value={cushionStartMonth}
+                      onChange={(e) => setCushionStartMonth(Number(e.target.value))}
+                      className={`w-full px-3 py-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer transition ${
+                        theme === 'dark' ? 'bg-slate-950/80 border border-slate-700/80 text-white' : 'bg-slate-50 border border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      {['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'].map((m, i) => (
+                        <option key={i} value={i}>{m}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={cushionStartQuincena}
+                      onChange={(e) => setCushionStartQuincena(Number(e.target.value) as 1 | 2)}
+                      className={`w-full px-3 py-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer transition ${
+                        theme === 'dark' ? 'bg-slate-950/80 border border-slate-700/80 text-white' : 'bg-slate-50 border border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      <option value={1}>Q1 (1-15)</option>
+                      <option value={2}>Q2 (16-31)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-4"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Continuar al sistema</span>
               </button>
             </form>
           )}

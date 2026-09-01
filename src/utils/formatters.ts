@@ -232,6 +232,41 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
     Math.round((totalPaid / debt.totalOriginalAmount) * 100)
   );
 
+  let elapsedPeriods = 0;
+  if (debt.payments.length > 0) {
+    let latestPaymentIdx = -1;
+    if (debt.frequency === 'quincenal') {
+      const startPIndex = calculatePeriodIndex(debt.startYear, debt.startMonth, debt.startQuincena);
+      debt.payments.forEach(p => {
+        const parts = p.periodKey.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const q = parts[2] === 'Q2' ? 2 : 1;
+          const idx = calculatePeriodIndex(y, m, q);
+          if (idx > latestPaymentIdx) latestPaymentIdx = idx;
+        }
+      });
+      if (latestPaymentIdx >= startPIndex) {
+        elapsedPeriods = (latestPaymentIdx - startPIndex) + 1;
+      }
+    } else {
+      const startMonthIndex = debt.startYear * 12 + debt.startMonth;
+      debt.payments.forEach(p => {
+        const parts = p.periodKey.split('-');
+        if (parts.length >= 2) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const idx = y * 12 + m;
+          if (idx > latestPaymentIdx) latestPaymentIdx = idx;
+        }
+      });
+      if (latestPaymentIdx >= startMonthIndex) {
+        elapsedPeriods = (latestPaymentIdx - startMonthIndex) + 1;
+      }
+    }
+  }
+
   const paidInstallmentsCount = debt.payments.length;
   // Calculate remaining installments needed based on remaining balance and installment amount
   const remainingInstallmentsCount = isFullyPaid
@@ -250,7 +285,7 @@ export function calculateDebtLiquidationInfo(debt: DebtItem): {
     };
   }
 
-  const totalInstallmentsProjected = paidInstallmentsCount + remainingInstallmentsCount;
+  const totalInstallmentsProjected = elapsedPeriods + remainingInstallmentsCount;
 
   if (debt.frequency === 'quincenal') {
     const startPIndex = calculatePeriodIndex(debt.startYear, debt.startMonth, debt.startQuincena);

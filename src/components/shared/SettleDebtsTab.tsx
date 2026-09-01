@@ -109,10 +109,10 @@ export const SettleDebtsTab: React.FC<SettleDebtsTabProps> = ({
                   {/* Member Info */}
                   <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                     <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-black text-slate-700 uppercase">
-                      {member.name.charAt(0)}
+                      {(member.name || member.email || '?').charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">{member.name}</h3>
+                      <h3 className="text-sm font-bold text-slate-900">{member.name || 'Usuario sin nombre'}</h3>
                       <p className="text-[11px] text-slate-400 font-semibold">{member.email}</p>
                     </div>
                   </div>
@@ -167,7 +167,7 @@ export const SettleDebtsTab: React.FC<SettleDebtsTabProps> = ({
                   }`}
                 >
                   <HeartHandshake className="w-4 h-4" />
-                  <span>Saldar Deudas con {member.name}</span>
+                  <span>Saldar Deudas con {member.name || 'Usuario'}</span>
                 </button>
               </div>
             );
